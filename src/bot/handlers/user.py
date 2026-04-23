@@ -1,3 +1,5 @@
+import re
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -38,6 +40,27 @@ def _parse_amount(raw: str) -> float | None:
     if value <= 0:
         return None
     return value
+
+
+def _parse_phone(raw: str) -> str | None:
+    candidate = raw.strip()
+    if not candidate:
+        return None
+    if not re.fullmatch(r"[0-9+\-()\s]{7,25}", candidate):
+        return None
+    digits = re.sub(r"\D", "", candidate)
+    if len(digits) < 10:
+        return None
+    return candidate
+
+
+def _operator_username_for_user() -> str:
+    username = settings.bot_operator_username.strip()
+    if not username:
+        return ""
+    if not username.startswith("@"):
+        username = f"@{username}"
+    return username
 
 
 def _format_direction(direction: str) -> str:
@@ -183,6 +206,28 @@ async def request_set_amount(message: Message, state: FSMContext) -> None:
         await message.answer("Введите корректную сумму числом.")
         return
     await state.update_data(amount=amount)
+    await state.set_state(CreateRequestFlow.waiting_full_name)
+    await message.answer("Введите ФИО получателя.")
+
+
+@router.message(CreateRequestFlow.waiting_full_name)
+async def request_set_full_name(message: Message, state: FSMContext) -> None:
+    full_name = (message.text or "").strip()
+    if len(full_name) < 5:
+        await message.answer("Введите полное ФИО, минимум 5 символов.")
+        return
+    await state.update_data(request_full_name=full_name)
+    await state.set_state(CreateRequestFlow.waiting_phone)
+    await message.answer("Введите номер телефона для связи.")
+
+
+@router.message(CreateRequestFlow.waiting_phone)
+async def request_set_phone(message: Message, state: FSMContext) -> None:
+    phone = _parse_phone(message.text or "")
+    if phone is None:
+        await message.answer("Введите корректный номер телефона, например +79991234567.")
+        return
+    await state.update_data(request_phone=phone)
     await state.set_state(CreateRequestFlow.waiting_requisites)
     await message.answer("Отправьте реквизиты для получения средств.")
 
@@ -195,8 +240,20 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         return
 
     data = await state.get_data()
-    direction = data["direction"]
-    amount_send = float(data["amount"])
+    direction = data.get("direction")
+    amount_raw = data.get("amount")
+    request_full_name = data.get("request_full_name")
+    request_phone = data.get("request_phone")
+
+    if not direction or amount_raw is None or not request_full_name or not request_phone:
+        await state.clear()
+        await message.answer(
+            "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
+            reply_markup=_menu(),
+        )
+        return
+
+    amount_send = float(amount_raw)
     try:
         async with SessionLocal() as session:
             margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
@@ -206,12 +263,18 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         return
     amount_receive = calc_receive(amount_send, quote.final_rate)
 
+    requisites_for_storage = (
+        f"ФИО: {request_full_name}\n"
+        f"Телефон: {request_phone}\n"
+        f"Реквизиты: {requisites}"
+    )
+
     async with SessionLocal() as session:
         user = await get_or_create_user(
             session=session,
             telegram_id=message.from_user.id,
             username=message.from_user.username,
-            full_name=message.from_user.full_name,
+            full_name=request_full_name,
         )
         request = await create_exchange_request(
             session=session,
@@ -222,7 +285,7 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
             base_rate=quote.base_rate,
             margin_percent=quote.margin_percent,
             final_rate=quote.final_rate,
-            user_requisites=requisites,
+            user_requisites=requisites_for_storage,
         )
         await session.commit()
 
@@ -231,16 +294,21 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         text=(
             f"Новая заявка #{request.id}\n"
             f"user_id={message.from_user.id}\n"
+            f"username={('@' + message.from_user.username) if message.from_user.username else '-'}\n"
             f"Направление: {direction}\n"
             f"Отправка: {amount_send}\n"
             f"Получение: {amount_receive}\n"
             f"Курс: {quote.final_rate:.6f}\n"
+            f"ФИО: {request_full_name}\n"
+            f"Телефон: {request_phone}\n"
             f"Реквизиты: {requisites}"
         ),
     )
     await state.clear()
+    operator_username = _operator_username_for_user()
+    operator_line = f"\nОператор: {operator_username}" if operator_username else ""
     await message.answer(
-        f"Заявка #{request.id} создана. Мы уведомим вас при смене статуса.",
+        f"Заявка #{request.id} принята.{operator_line}\nМы уведомим вас при смене статуса.",
         reply_markup=_menu(),
     )
 

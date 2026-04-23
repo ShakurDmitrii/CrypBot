@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     bot_token: str = Field(alias="BOT_TOKEN")
     bot_operator_chat_id: int = Field(alias="BOT_OPERATOR_CHAT_ID")
     bot_operator_ids: str = Field(default="", alias="BOT_OPERATOR_IDS")
+    bot_operator_username: str = Field(default="", alias="BOT_OPERATOR_USERNAME")
     bot_offer_url: str = Field(alias="BOT_OFFER_URL")
     bot_margin_percent: float = Field(default=1.5, alias="BOT_MARGIN_PERCENT")
     bot_mini_app_url: str = Field(default="", alias="BOT_MINI_APP_URL")

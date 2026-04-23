@@ -23,6 +23,7 @@ MVP-бот для криптообменника на стеке:
 1. Создать `.env`:
    - Скопировать `.env.example` в `.env`
    - Заполнить `BOT_TOKEN`, `BOT_OPERATOR_CHAT_ID`, `BOT_OPERATOR_IDS`, `BOT_OFFER_URL`
+   - Опционально: `BOT_OPERATOR_USERNAME` для показа пользователю в подтверждении заявки
    - Для кнопки мини-аппа добавить `BOT_MINI_APP_URL` (например, `https://your-domain.com`)
    - Если `api.telegram.org` недоступен в вашей сети, укажите прокси в `BOT_PROXY`
 2. Установить зависимости:
