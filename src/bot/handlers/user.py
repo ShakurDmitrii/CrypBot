@@ -1,9 +1,9 @@
 from aiogram import F, Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from src.bot.keyboards.main import main_menu_keyboard
+from src.bot.keyboards.main import direction_keyboard, main_menu_keyboard
 from src.bot.states.request_flow import AmlFlow, CalcFlow, CreateRequestFlow
 from src.config import get_settings
 from src.db.session import SessionLocal
@@ -17,11 +17,11 @@ from src.services.rates import available_directions, calc_receive, get_quote
 
 router = Router()
 settings = get_settings()
+CANCEL_TEXT = "Отмена"
 
 
 def _directions_text() -> str:
-    directions = "\n".join(f"- {item}" for item in available_directions())
-    return f"Выберите направление:\n{directions}"
+    return "Выберите направление кнопкой ниже."
 
 
 def _parse_amount(raw: str) -> float | None:
@@ -35,6 +35,10 @@ def _parse_amount(raw: str) -> float | None:
     return value
 
 
+def _format_direction(direction: str) -> str:
+    return direction.replace("->", " -> ")
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
@@ -42,6 +46,12 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         "Операционный бот обменника запущен.\nВыберите действие в меню.",
         reply_markup=main_menu_keyboard(),
     )
+
+
+@router.message(StateFilter("*"), F.text == CANCEL_TEXT)
+async def cancel_flow(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("Действие отменено.", reply_markup=main_menu_keyboard())
 
 
 @router.message(Command("myid"))
@@ -59,30 +69,43 @@ async def cmd_chatid(message: Message) -> None:
 
 @router.message(F.text == "Курс")
 async def show_rate(message: Message) -> None:
-    lines: list[str] = ["Актуальные курсы:"]
+    blocks: list[str] = []
     for direction in available_directions():
         quote = get_quote(direction, settings.bot_margin_percent)
-        lines.append(
-            f"{direction}: базовый={quote.base_rate:.6f}, итог={quote.final_rate:.6f} (маржа {quote.margin_percent}%)"
+        blocks.append(
+            (
+                f"<b>{_format_direction(direction)}</b>\n"
+                f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n"
+                f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n"
+                f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
+            )
         )
-    await message.answer("\n".join(lines), reply_markup=main_menu_keyboard())
+
+    text = "<b>Актуальные курсы</b>\n\n" + "\n\n".join(blocks)
+    await message.answer(text, reply_markup=main_menu_keyboard())
 
 
 @router.message(F.text == "Рассчитать")
 async def start_calc(message: Message, state: FSMContext) -> None:
     await state.set_state(CalcFlow.waiting_direction)
-    await message.answer(_directions_text())
+    await message.answer(
+        _directions_text(),
+        reply_markup=direction_keyboard(available_directions()),
+    )
 
 
 @router.message(CalcFlow.waiting_direction)
 async def calc_set_direction(message: Message, state: FSMContext) -> None:
     direction = (message.text or "").strip()
     if direction not in available_directions():
-        await message.answer("Неизвестное направление. Введите из списка.")
+        await message.answer(
+            "Неизвестное направление. Выберите вариант кнопкой.",
+            reply_markup=direction_keyboard(available_directions()),
+        )
         return
     await state.update_data(direction=direction)
     await state.set_state(CalcFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.")
+    await message.answer("Введите сумму отправки.", reply_markup=main_menu_keyboard())
 
 
 @router.message(CalcFlow.waiting_amount)
@@ -112,18 +135,24 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
 @router.message(F.text == "Создать заявку")
 async def create_request_start(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_direction)
-    await message.answer("Создание заявки.\n" + _directions_text())
+    await message.answer(
+        "Создание заявки.\n" + _directions_text(),
+        reply_markup=direction_keyboard(available_directions()),
+    )
 
 
 @router.message(CreateRequestFlow.waiting_direction)
 async def request_set_direction(message: Message, state: FSMContext) -> None:
     direction = (message.text or "").strip()
     if direction not in available_directions():
-        await message.answer("Неизвестное направление. Введите одно из доступных.")
+        await message.answer(
+            "Неизвестное направление. Выберите вариант кнопкой.",
+            reply_markup=direction_keyboard(available_directions()),
+        )
         return
     await state.update_data(direction=direction)
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.")
+    await message.answer("Введите сумму отправки.", reply_markup=main_menu_keyboard())
 
 
 @router.message(CreateRequestFlow.waiting_amount)

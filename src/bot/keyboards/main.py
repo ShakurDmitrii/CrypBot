@@ -10,3 +10,20 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         ],
         resize_keyboard=True,
     )
+
+
+def direction_keyboard(directions: list[str]) -> ReplyKeyboardMarkup:
+    rows: list[list[KeyboardButton]] = []
+    pair_row: list[KeyboardButton] = []
+
+    for direction in directions:
+        pair_row.append(KeyboardButton(text=direction))
+        if len(pair_row) == 2:
+            rows.append(pair_row)
+            pair_row = []
+
+    if pair_row:
+        rows.append(pair_row)
+
+    rows.append([KeyboardButton(text="Отмена")])
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
