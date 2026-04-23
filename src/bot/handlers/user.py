@@ -20,6 +20,10 @@ settings = get_settings()
 CANCEL_TEXT = "Отмена"
 
 
+def _menu():
+    return main_menu_keyboard(settings.bot_mini_app_url)
+
+
 def _directions_text() -> str:
     return "Выберите направление кнопкой ниже."
 
@@ -44,14 +48,14 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         "Операционный бот обменника запущен.\nВыберите действие в меню.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=_menu(),
     )
 
 
 @router.message(StateFilter("*"), F.text == CANCEL_TEXT)
 async def cancel_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Действие отменено.", reply_markup=main_menu_keyboard())
+    await message.answer("Действие отменено.", reply_markup=_menu())
 
 
 @router.message(Command("myid"))
@@ -82,7 +86,7 @@ async def show_rate(message: Message) -> None:
         )
 
     text = "<b>Актуальные курсы</b>\n\n" + "\n\n".join(blocks)
-    await message.answer(text, reply_markup=main_menu_keyboard())
+    await message.answer(text, reply_markup=_menu())
 
 
 @router.message(F.text == "Рассчитать")
@@ -105,7 +109,7 @@ async def calc_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CalcFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=main_menu_keyboard())
+    await message.answer("Введите сумму отправки.", reply_markup=_menu())
 
 
 @router.message(CalcFlow.waiting_amount)
@@ -128,7 +132,7 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
             f"Итоговый курс: {quote.final_rate:.6f}\n"
             f"К получению: {amount_receive}"
         ),
-        reply_markup=main_menu_keyboard(),
+        reply_markup=_menu(),
     )
 
 
@@ -152,7 +156,7 @@ async def request_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=main_menu_keyboard())
+    await message.answer("Введите сумму отправки.", reply_markup=_menu())
 
 
 @router.message(CreateRequestFlow.waiting_amount)
@@ -214,7 +218,7 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         f"Заявка #{request.id} создана. Мы уведомим вас при смене статуса.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=_menu(),
     )
 
 
@@ -231,7 +235,7 @@ async def show_history(message: Message) -> None:
         await session.commit()
 
     if not rows:
-        await message.answer("История пуста. У вас пока нет заявок.", reply_markup=main_menu_keyboard())
+        await message.answer("История пуста. У вас пока нет заявок.", reply_markup=_menu())
         return
 
     lines = ["Последние заявки:"]
@@ -239,12 +243,12 @@ async def show_history(message: Message) -> None:
         lines.append(
             f"#{row.id} {row.direction} | send={row.amount_send} receive={row.amount_receive} | {row.status.value}"
         )
-    await message.answer("\n".join(lines), reply_markup=main_menu_keyboard())
+    await message.answer("\n".join(lines), reply_markup=_menu())
 
 
 @router.message(F.text == "Оферта")
 async def show_offer(message: Message) -> None:
-    await message.answer(f"Публичная оферта: {settings.bot_offer_url}", reply_markup=main_menu_keyboard())
+    await message.answer(f"Публичная оферта: {settings.bot_offer_url}", reply_markup=_menu())
 
 
 @router.message(F.text == "AML проверка")
@@ -295,5 +299,5 @@ async def aml_set_value(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         f"AML-запрос #{aml.id} принят. Результат сообщим отдельно.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=_menu(),
     )

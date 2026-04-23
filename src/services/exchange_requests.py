@@ -41,9 +41,10 @@ async def create_exchange_request(
     margin_percent: float,
     final_rate: float,
     user_requisites: str,
+    source: str = "telegram",
 ) -> ExchangeRequest:
     request = ExchangeRequest(
-        source="telegram",
+        source=source,
         user_id=user_id,
         direction=direction,
         amount_send=amount_send,

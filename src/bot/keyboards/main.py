@@ -1,15 +1,19 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 
 
-def main_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Курс"), KeyboardButton(text="Рассчитать")],
-            [KeyboardButton(text="Создать заявку"), KeyboardButton(text="История")],
-            [KeyboardButton(text="Оферта"), KeyboardButton(text="AML проверка")],
-        ],
-        resize_keyboard=True,
-    )
+def main_menu_keyboard(mini_app_url: str = "") -> ReplyKeyboardMarkup:
+    keyboard: list[list[KeyboardButton]] = [
+        [KeyboardButton(text="Курс"), KeyboardButton(text="Рассчитать")],
+        [KeyboardButton(text="Создать заявку"), KeyboardButton(text="История")],
+        [KeyboardButton(text="Оферта"), KeyboardButton(text="AML проверка")],
+    ]
+
+    if mini_app_url.strip():
+        keyboard.append(
+            [KeyboardButton(text="Мини-апп", web_app=WebAppInfo(url=mini_app_url.strip()))]
+        )
+
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def direction_keyboard(directions: list[str]) -> ReplyKeyboardMarkup:

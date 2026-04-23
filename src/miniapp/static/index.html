@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --primary: #0ea5e9;
+        --primary-2: #0284c7;
+        --border: #dbe5f0;
+        --danger: #dc2626;
+        --ok: #16a34a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: linear-gradient(160deg, #f5f7fb 0%, #e6f6ff 100%);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .sub {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .input {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+        font: inherit;
+        background: #fff;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .dir-btn,
+      .btn {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+        cursor: pointer;
+        background: #fff;
+      }
+
+      .dir-btn.active {
+        border-color: var(--primary);
+        background: #e0f2fe;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      .btn.primary:hover {
+        background: var(--primary-2);
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .result {
+        white-space: pre-line;
+        line-height: 1.45;
+      }
+
+      .status {
+        font-size: 13px;
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.err {
+        color: var(--danger);
+      }
+
+      .history-item {
+        padding: 8px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .history-item:first-child {
+        border-top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Sky Mini App</h1>
+      <p class="sub">Калькулятор и заявка обмена</p>
+
+      <div class="grid">
+        <section class="card">
+          <label class="label">Направление обмена</label>
+          <div id="directions" class="btn-row"></div>
+        </section>
+
+        <section class="card">
+          <label class="label" for="amount">Сумма отправки</label>
+          <input id="amount" class="input" type="number" min="0" step="0.000001" placeholder="Например, 1000" />
+          <div class="btn-row" style="margin-top: 10px">
+            <button id="calcBtn" class="btn primary" type="button">Рассчитать</button>
+          </div>
+          <p id="calcResult" class="result hint"></p>
+        </section>
+
+        <section class="card">
+          <label class="label" for="requisites">Реквизиты для получения</label>
+          <input id="requisites" class="input" type="text" placeholder="Карта, кошелек, банковские реквизиты" />
+          <div class="btn-row" style="margin-top: 10px">
+            <button id="createBtn" class="btn primary" type="button">Создать заявку</button>
+            <button id="historyBtn" class="btn" type="button">Обновить историю</button>
+          </div>
+          <p id="statusText" class="status hint"></p>
+        </section>
+
+        <section class="card">
+          <h3 style="margin: 0 0 10px">История заявок</h3>
+          <div id="history" class="hint">Загрузка...</div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+
+      const state = {
+        telegramId: tg?.initDataUnsafe?.user?.id ?? null,
+        username: tg?.initDataUnsafe?.user?.username ?? null,
+        fullName: [tg?.initDataUnsafe?.user?.first_name, tg?.initDataUnsafe?.user?.last_name].filter(Boolean).join(" ") || null,
+        direction: null,
+      };
+
+      const directionsEl = document.getElementById("directions");
+      const amountEl = document.getElementById("amount");
+      const requisitesEl = document.getElementById("requisites");
+      const calcResultEl = document.getElementById("calcResult");
+      const statusTextEl = document.getElementById("statusText");
+      const historyEl = document.getElementById("history");
+
+      function setStatus(message, ok = true) {
+        statusTextEl.textContent = message;
+        statusTextEl.className = `status ${ok ? "ok" : "err"}`;
+      }
+
+      function clearStatus() {
+        statusTextEl.textContent = "";
+        statusTextEl.className = "status hint";
+      }
+
+      function getTelegramId() {
+        if (state.telegramId) {
+          return state.telegramId;
+        }
+        const raw = prompt("Введите Telegram ID для теста в браузере");
+        if (!raw) {
+          return null;
+        }
+        const parsed = Number(raw);
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          alert("Telegram ID должен быть положительным числом");
+          return null;
+        }
+        state.telegramId = parsed;
+        return state.telegramId;
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function renderDirections(items) {
+        directionsEl.innerHTML = "";
+        items.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "dir-btn";
+          btn.textContent = item.label;
+          btn.dataset.direction = item.id;
+          btn.addEventListener("click", () => {
+            state.direction = item.id;
+            [...directionsEl.querySelectorAll(".dir-btn")].forEach((x) => x.classList.remove("active"));
+            btn.classList.add("active");
+          });
+          directionsEl.appendChild(btn);
+        });
+      }
+
+      async function loadDirections() {
+        const data = await api("/api/directions");
+        renderDirections(data.items || []);
+      }
+
+      async function onCalc() {
+        clearStatus();
+        const amount = Number(amountEl.value);
+        if (!state.direction) {
+          setStatus("Сначала выберите направление обмена.", false);
+          return;
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+          setStatus("Введите корректную сумму отправки.", false);
+          return;
+        }
+
+        const data = await api("/api/calc", {
+          method: "POST",
+          body: JSON.stringify({
+            direction: state.direction,
+            amount_send: amount,
+          }),
+        });
+
+        calcResultEl.textContent =
+          `Направление: ${data.direction}\n` +
+          `Базовый курс: ${Number(data.base_rate).toFixed(6)}\n` +
+          `Маржа: +${Number(data.margin_percent).toFixed(2)}%\n` +
+          `Итоговый курс: ${Number(data.final_rate).toFixed(6)}\n` +
+          `К получению: ${Number(data.amount_receive).toFixed(6)}`;
+      }
+
+      async function onCreate() {
+        clearStatus();
+        const telegramId = getTelegramId();
+        if (!telegramId) {
+          return;
+        }
+
+        const amount = Number(amountEl.value);
+        const requisites = requisitesEl.value.trim();
+        if (!state.direction) {
+          setStatus("Сначала выберите направление обмена.", false);
+          return;
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+          setStatus("Введите корректную сумму отправки.", false);
+          return;
+        }
+        if (!requisites) {
+          setStatus("Введите реквизиты для получения.", false);
+          return;
+        }
+
+        const data = await api("/api/requests", {
+          method: "POST",
+          body: JSON.stringify({
+            telegram_id: telegramId,
+            username: state.username,
+            full_name: state.fullName,
+            direction: state.direction,
+            amount_send: amount,
+            user_requisites: requisites,
+          }),
+        });
+
+        setStatus(`Заявка #${data.id} создана. Статус: ${data.status}`, true);
+        await loadHistory();
+      }
+
+      async function loadHistory() {
+        const telegramId = getTelegramId();
+        if (!telegramId) {
+          historyEl.textContent = "Укажите Telegram ID для загрузки истории.";
+          return;
+        }
+
+        const data = await api(`/api/requests/${telegramId}`);
+        const items = data.items || [];
+
+        if (!items.length) {
+          historyEl.textContent = "Заявок пока нет.";
+          return;
+        }
+
+        historyEl.innerHTML = "";
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "history-item";
+          row.innerHTML =
+            `<div><b>#${item.id}</b> ${item.direction.replace("->", " -> ")}</div>` +
+            `<div>send=${item.amount_send} receive=${item.amount_receive}</div>` +
+            `<div>status=<b>${item.status}</b></div>`;
+          historyEl.appendChild(row);
+        });
+      }
+
+      document.getElementById("calcBtn").addEventListener("click", () => onCalc().catch((e) => setStatus(e.message, false)));
+      document.getElementById("createBtn").addEventListener("click", () => onCreate().catch((e) => setStatus(e.message, false)));
+      document.getElementById("historyBtn").addEventListener("click", () => loadHistory().catch((e) => setStatus(e.message, false)));
+
+      loadDirections()
+        .then(loadHistory)
+        .catch((e) => setStatus(`Ошибка загрузки: ${e.message}`, false));
+    </script>
+  </body>
+  </html>

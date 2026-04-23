@@ -23,6 +23,7 @@ MVP-бот для криптообменника на стеке:
 1. Создать `.env`:
    - Скопировать `.env.example` в `.env`
    - Заполнить `BOT_TOKEN`, `BOT_OPERATOR_CHAT_ID`, `BOT_OPERATOR_IDS`, `BOT_OFFER_URL`
+   - Для кнопки мини-аппа добавить `BOT_MINI_APP_URL` (например, `https://your-domain.com`)
    - Если `api.telegram.org` недоступен в вашей сети, укажите прокси в `BOT_PROXY`
 2. Установить зависимости:
 ```bash
@@ -36,6 +37,52 @@ alembic upgrade head
 ```bash
 python -m src.main
 ```
+
+## Mini App
+
+Запуск API и фронта мини-аппа:
+```bash
+uvicorn src.miniapp.app:app --host 0.0.0.0 --port 8080 --reload
+```
+
+Локально открыть:
+```text
+http://127.0.0.1:8080
+```
+
+Для открытия из Telegram-кнопки укажите публичный HTTPS URL в `.env`:
+```env
+BOT_MINI_APP_URL=https://your-domain.com
+```
+
+## Локальный запуск Mini App через ngrok
+
+Если вы тестируете локально, Telegram-кнопке нужен публичный `https` URL.
+
+1. Запустить mini app локально:
+```bash
+uvicorn src.miniapp.app:app --host 127.0.0.1 --port 8083
+```
+
+2. Запустить туннель:
+```bash
+ngrok http 8083
+```
+
+3. Скопировать HTTPS Forwarding URL (например `https://xxxx.ngrok-free.app`) и указать его в `.env`:
+```env
+BOT_MINI_APP_URL=https://xxxx.ngrok-free.app
+```
+
+4. Перезапустить Telegram-бота:
+```bash
+python -m src.main
+```
+
+Важно:
+- polling может работать только в одном экземпляре бота на один токен;
+- при каждом новом URL от ngrok нужно обновить `BOT_MINI_APP_URL` и перезапустить бота;
+- окно `ngrok` и процесс `uvicorn` должны оставаться запущенными, пока вы тестируете mini app.
 
 ## Операторские команды
 
