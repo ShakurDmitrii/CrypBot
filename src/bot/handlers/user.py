@@ -13,7 +13,7 @@ from src.services.exchange_requests import (
     get_or_create_user,
     list_user_requests,
 )
-from src.services.rates import available_directions, calc_receive, get_quote
+from src.services.rates import RateServiceError, available_directions, calc_receive, get_quote
 
 router = Router()
 settings = get_settings()
@@ -75,7 +75,14 @@ async def cmd_chatid(message: Message) -> None:
 async def show_rate(message: Message) -> None:
     blocks: list[str] = []
     for direction in available_directions():
-        quote = get_quote(direction, settings.bot_margin_percent)
+        try:
+            quote = await get_quote(direction, settings.bot_margin_percent, settings)
+        except RateServiceError:
+            await message.answer(
+                "Сервис курсов временно недоступен. Попробуйте еще раз через пару секунд.",
+                reply_markup=_menu(),
+            )
+            return
         blocks.append(
             (
                 f"<b>{_format_direction(direction)}</b>\n"
@@ -121,7 +128,11 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
 
     data = await state.get_data()
     direction = data["direction"]
-    quote = get_quote(direction, settings.bot_margin_percent)
+    try:
+        quote = await get_quote(direction, settings.bot_margin_percent, settings)
+    except RateServiceError:
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
+        return
     amount_receive = calc_receive(amount, quote.final_rate)
     await state.clear()
     await message.answer(
@@ -180,7 +191,11 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     direction = data["direction"]
     amount_send = float(data["amount"])
-    quote = get_quote(direction, settings.bot_margin_percent)
+    try:
+        quote = await get_quote(direction, settings.bot_margin_percent, settings)
+    except RateServiceError:
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
+        return
     amount_receive = calc_receive(amount_send, quote.final_rate)
 
     async with SessionLocal() as session:

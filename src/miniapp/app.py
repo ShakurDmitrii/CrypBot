@@ -14,7 +14,7 @@ from src.services.exchange_requests import (
     get_or_create_user,
     list_user_requests,
 )
-from src.services.rates import available_directions, calc_receive, get_quote
+from src.services.rates import RateServiceError, available_directions, calc_receive, get_quote
 
 settings = get_settings()
 BASE_DIR = Path(__file__).resolve().parent
@@ -76,7 +76,10 @@ async def directions() -> dict[str, list[dict[str, str]]]:
 @app.post("/api/calc")
 async def calc(payload: CalcRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
-    quote = get_quote(payload.direction, settings.bot_margin_percent)
+    try:
+        quote = await get_quote(payload.direction, settings.bot_margin_percent, settings)
+    except RateServiceError as exc:
+        raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
     amount_receive = calc_receive(payload.amount_send, quote.final_rate)
     return {
         "direction": payload.direction,
@@ -91,7 +94,10 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
 @app.post("/api/requests")
 async def create_request(payload: CreateRequestPayload) -> dict[str, int | str | float]:
     _validate_direction(payload.direction)
-    quote = get_quote(payload.direction, settings.bot_margin_percent)
+    try:
+        quote = await get_quote(payload.direction, settings.bot_margin_percent, settings)
+    except RateServiceError as exc:
+        raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
     amount_receive = calc_receive(payload.amount_send, quote.final_rate)
 
     async with SessionLocal() as session:

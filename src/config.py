@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     bot_margin_percent: float = Field(default=1.5, alias="BOT_MARGIN_PERCENT")
     bot_mini_app_url: str = Field(default="", alias="BOT_MINI_APP_URL")
     bot_proxy: str = Field(default="", alias="BOT_PROXY")
+    rate_api_base_url: str = Field(default="https://api.rapira.net", alias="RATE_API_BASE_URL")
+    rate_api_timeout_sec: int = Field(default=10, alias="RATE_API_TIMEOUT_SEC")
+    rate_cache_ttl_sec: int = Field(default=15, alias="RATE_CACHE_TTL_SEC")
+    rate_usdt_rub_symbol: str = Field(default="USDT/RUB", alias="RATE_USDT_RUB_SYMBOL")
     database_url: str = Field(alias="DATABASE_URL")
 
     @field_validator("bot_operator_ids")
