@@ -90,6 +90,9 @@ python -m src.main
   - статусы: `new`, `waiting_payment`, `payment_received`, `processing`, `done`, `canceled`, `disputed`
 - `/aml_status <aml_id> <status> [comment]`
   - статусы: `pending`, `low`, `medium`, `high`, `rejected`
+- `/margin [percent]`
+  - без аргументов показывает текущую маржу
+  - с аргументом устанавливает новую маржу в процентах (например, `/margin 2.5`)
 
 ## Переключение на PostgreSQL
 

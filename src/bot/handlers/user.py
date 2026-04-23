@@ -7,6 +7,7 @@ from src.bot.keyboards.main import direction_keyboard, main_menu_keyboard
 from src.bot.states.request_flow import AmlFlow, CalcFlow, CreateRequestFlow
 from src.config import get_settings
 from src.db.session import SessionLocal
+from src.services.app_settings import get_margin_percent
 from src.services.exchange_requests import (
     create_aml_check,
     create_exchange_request,
@@ -73,10 +74,13 @@ async def cmd_chatid(message: Message) -> None:
 
 @router.message(F.text == "Курс")
 async def show_rate(message: Message) -> None:
+    async with SessionLocal() as session:
+        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+
     blocks: list[str] = []
     for direction in available_directions():
         try:
-            quote = await get_quote(direction, settings.bot_margin_percent, settings)
+            quote = await get_quote(direction, margin_percent, settings)
         except RateServiceError:
             await message.answer(
                 "Сервис курсов временно недоступен. Попробуйте еще раз через пару секунд.",
@@ -129,7 +133,9 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     direction = data["direction"]
     try:
-        quote = await get_quote(direction, settings.bot_margin_percent, settings)
+        async with SessionLocal() as session:
+            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        quote = await get_quote(direction, margin_percent, settings)
     except RateServiceError:
         await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
         return
@@ -192,7 +198,9 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     direction = data["direction"]
     amount_send = float(data["amount"])
     try:
-        quote = await get_quote(direction, settings.bot_margin_percent, settings)
+        async with SessionLocal() as session:
+            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        quote = await get_quote(direction, margin_percent, settings)
     except RateServiceError:
         await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
         return

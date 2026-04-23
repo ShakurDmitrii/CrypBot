@@ -6,6 +6,7 @@ from sqlalchemy import select
 from src.config import get_settings
 from src.db.models import AmlCheck, AmlStatus, RequestStatus, User
 from src.db.session import SessionLocal
+from src.services.app_settings import get_margin_percent, set_margin_percent
 from src.services.exchange_requests import get_request_by_id, update_request_status
 
 router = Router()
@@ -35,6 +36,40 @@ def _is_operator(message: Message) -> bool:
     if message.from_user is None:
         return False
     return message.from_user.id in settings.operator_ids
+
+
+@router.message(Command("margin"))
+async def set_bot_margin(message: Message, command: CommandObject) -> None:
+    if not _is_operator(message):
+        await message.answer("Команда доступна только оператору.")
+        return
+
+    if not command.args:
+        async with SessionLocal() as session:
+            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        await message.answer(
+            f"Текущая маржа: {margin_percent:.2f}%\n"
+            f"Изменить: /margin <percent>\n"
+            f"Пример: /margin 2.5"
+        )
+        return
+
+    raw_value = command.args.strip().replace(",", ".")
+    try:
+        margin_percent = float(raw_value)
+    except ValueError:
+        await message.answer("Некорректное значение. Пример: /margin 2.5")
+        return
+
+    if margin_percent < 0:
+        await message.answer("Маржа не может быть отрицательной.")
+        return
+
+    async with SessionLocal() as session:
+        await set_margin_percent(session, margin_percent)
+        await session.commit()
+
+    await message.answer(f"Маржа обновлена: {margin_percent:.2f}%")
 
 
 @router.message(Command("status"))

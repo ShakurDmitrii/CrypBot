@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from src.config import get_settings
 from src.db.init_db import create_tables
 from src.db.session import SessionLocal, engine
+from src.services.app_settings import get_margin_percent
 from src.services.exchange_requests import (
     create_exchange_request,
     get_or_create_user,
@@ -76,8 +77,10 @@ async def directions() -> dict[str, list[dict[str, str]]]:
 @app.post("/api/calc")
 async def calc(payload: CalcRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
+    async with SessionLocal() as session:
+        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
     try:
-        quote = await get_quote(payload.direction, settings.bot_margin_percent, settings)
+        quote = await get_quote(payload.direction, margin_percent, settings)
     except RateServiceError as exc:
         raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
     amount_receive = calc_receive(payload.amount_send, quote.final_rate)
@@ -94,8 +97,10 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
 @app.post("/api/requests")
 async def create_request(payload: CreateRequestPayload) -> dict[str, int | str | float]:
     _validate_direction(payload.direction)
+    async with SessionLocal() as session:
+        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
     try:
-        quote = await get_quote(payload.direction, settings.bot_margin_percent, settings)
+        quote = await get_quote(payload.direction, margin_percent, settings)
     except RateServiceError as exc:
         raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
     amount_receive = calc_receive(payload.amount_send, quote.final_rate)
