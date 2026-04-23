@@ -49,7 +49,7 @@ async def set_bot_margin(message: Message, command: CommandObject) -> None:
             margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
         await message.answer(
             f"Текущая маржа: {margin_percent:.2f}%\n"
-            f"Изменить: /margin <percent>\n"
+            f"Изменить: /margin &lt;percent&gt;\n"
             f"Пример: /margin 2.5"
         )
         return
@@ -79,12 +79,12 @@ async def set_request_status(message: Message, command: CommandObject) -> None:
         return
 
     if not command.args:
-        await message.answer("Формат: /status <request_id> <status> [comment]")
+        await message.answer("Формат: /status &lt;request_id&gt; &lt;status&gt; [comment]")
         return
 
     parts = command.args.split(maxsplit=2)
     if len(parts) < 2:
-        await message.answer("Формат: /status <request_id> <status> [comment]")
+        await message.answer("Формат: /status &lt;request_id&gt; &lt;status&gt; [comment]")
         return
 
     request_id_raw, status_raw = parts[0], parts[1].lower()
@@ -132,12 +132,12 @@ async def set_aml_status(message: Message, command: CommandObject) -> None:
         return
 
     if not command.args:
-        await message.answer("Формат: /aml_status <aml_id> <status> [comment]")
+        await message.answer("Формат: /aml_status &lt;aml_id&gt; &lt;status&gt; [comment]")
         return
 
     parts = command.args.split(maxsplit=2)
     if len(parts) < 2:
-        await message.answer("Формат: /aml_status <aml_id> <status> [comment]")
+        await message.answer("Формат: /aml_status &lt;aml_id&gt; &lt;status&gt; [comment]")
         return
 
     aml_id_raw, status_raw = parts[0], parts[1].lower()
