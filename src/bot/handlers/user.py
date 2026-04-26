@@ -5,9 +5,14 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardMarkup
 
-from src.bot.keyboards.main import direction_keyboard, main_menu_keyboard
+from src.bot.keyboards.main import (
+    back_cancel_keyboard,
+    direction_keyboard,
+    main_menu_keyboard,
+    request_confirm_keyboard,
+)
 from src.bot.states.request_flow import AmlFlow, CalcFlow, CreateRequestFlow
 from src.config import get_settings
 from src.db.session import SessionLocal
@@ -23,6 +28,9 @@ from src.services.rates import RateServiceError, available_directions, calc_rece
 router = Router()
 settings = get_settings()
 CANCEL_TEXT = "Отмена"
+BACK_TEXT = "Назад"
+CONFIRM_TEXT = "Подтвердить"
+EDIT_TEXT = "Изменить"
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +42,10 @@ def _is_operator_user(message: Message) -> bool:
 
 def _menu(message: Message):
     return main_menu_keyboard(settings.bot_mini_app_url, is_operator=_is_operator_user(message))
+
+
+def _back_cancel_menu() -> ReplyKeyboardMarkup:
+    return back_cancel_keyboard()
 
 
 def _directions_text() -> str:
@@ -76,6 +88,55 @@ def _format_direction(direction: str) -> str:
     return direction.replace("->", " -> ")
 
 
+def _operator_request_actions_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⏳ В обработке",
+                    callback_data=f"opreq:{request_id}:processing",
+                ),
+                InlineKeyboardButton(
+                    text="✅ Выполнена",
+                    callback_data=f"opreq:{request_id}:done",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ Отменена",
+                    callback_data=f"opreq:{request_id}:canceled",
+                ),
+            ],
+        ]
+    )
+
+
+async def _build_request_preview_text(
+    direction: str,
+    amount_send: float,
+    request_full_name: str,
+    request_phone: str,
+    requisites: str,
+) -> str | None:
+    try:
+        async with SessionLocal() as session:
+            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        quote = await get_quote(direction, margin_percent, settings)
+    except RateServiceError:
+        return None
+    amount_receive = calc_receive(amount_send, quote.final_rate)
+    return (
+        "<b>Проверьте заявку</b>\n\n"
+        f"Направление: <b>{_format_direction(direction)}</b>\n"
+        f"Отправка: <code>{amount_send}</code>\n"
+        f"Итоговый курс: <code>{quote.final_rate:.6f}</code>\n"
+        f"К получению: <code>{amount_receive}</code>\n\n"
+        f"ФИО: {request_full_name}\n"
+        f"Телефон: {request_phone}\n"
+        f"Реквизиты: {requisites}"
+    )
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
@@ -89,6 +150,60 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 async def cancel_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Действие отменено.", reply_markup=_menu(message))
+
+
+@router.message(StateFilter(CalcFlow.waiting_direction), F.text == BACK_TEXT)
+async def calc_back_from_direction(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("Возврат в главное меню.", reply_markup=_menu(message))
+
+
+@router.message(StateFilter(CalcFlow.waiting_amount), F.text == BACK_TEXT)
+async def calc_back_from_amount(message: Message, state: FSMContext) -> None:
+    await state.set_state(CalcFlow.waiting_direction)
+    await message.answer(
+        "Шаг 1/2. Выберите направление кнопкой ниже.",
+        reply_markup=direction_keyboard(available_directions()),
+    )
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_direction), F.text == BACK_TEXT)
+async def request_back_from_direction(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("Возврат в главное меню.", reply_markup=_menu(message))
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_amount), F.text == BACK_TEXT)
+async def request_back_from_amount(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateRequestFlow.waiting_direction)
+    await message.answer(
+        "Шаг 1/5. Выберите направление кнопкой ниже.",
+        reply_markup=direction_keyboard(available_directions()),
+    )
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_full_name), F.text == BACK_TEXT)
+async def request_back_from_full_name(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateRequestFlow.waiting_amount)
+    await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_phone), F.text == BACK_TEXT)
+async def request_back_from_phone(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateRequestFlow.waiting_full_name)
+    await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_requisites), F.text == BACK_TEXT)
+async def request_back_from_requisites(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateRequestFlow.waiting_phone)
+    await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_confirm), F.text == BACK_TEXT)
+async def request_back_from_confirm(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateRequestFlow.waiting_requisites)
+    await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
 
 
 @router.message(Command("myid"))
@@ -139,7 +254,7 @@ async def show_rate(message: Message) -> None:
 async def start_calc(message: Message, state: FSMContext) -> None:
     await state.set_state(CalcFlow.waiting_direction)
     await message.answer(
-        _directions_text(),
+        "Шаг 1/2. " + _directions_text(),
         reply_markup=direction_keyboard(available_directions()),
     )
 
@@ -155,7 +270,7 @@ async def calc_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CalcFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=_menu(message))
+    await message.answer("Шаг 2/2. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CalcFlow.waiting_amount)
@@ -192,7 +307,7 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
 async def create_request_start(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_direction)
     await message.answer(
-        "Создание заявки.\n" + _directions_text(),
+        "Создание заявки.\nШаг 1/5. " + _directions_text(),
         reply_markup=direction_keyboard(available_directions()),
     )
 
@@ -208,7 +323,7 @@ async def request_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=_menu(message))
+    await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_amount)
@@ -219,7 +334,7 @@ async def request_set_amount(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(amount=amount)
     await state.set_state(CreateRequestFlow.waiting_full_name)
-    await message.answer("Введите ФИО получателя.")
+    await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_full_name)
@@ -230,7 +345,7 @@ async def request_set_full_name(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(request_full_name=full_name)
     await state.set_state(CreateRequestFlow.waiting_phone)
-    await message.answer("Введите номер телефона для связи.")
+    await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_phone)
@@ -241,7 +356,7 @@ async def request_set_phone(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(request_phone=phone)
     await state.set_state(CreateRequestFlow.waiting_requisites)
-    await message.answer("Отправьте реквизиты для получения средств.")
+    await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_requisites)
@@ -258,6 +373,60 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     request_phone = data.get("request_phone")
 
     if not direction or amount_raw is None or not request_full_name or not request_phone:
+        await state.clear()
+        await message.answer(
+            "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
+            reply_markup=_menu(message),
+        )
+        return
+
+    amount_send = float(amount_raw)
+    await state.update_data(request_requisites=requisites)
+    preview = await _build_request_preview_text(
+        direction=direction,
+        amount_send=amount_send,
+        request_full_name=request_full_name,
+        request_phone=request_phone,
+        requisites=requisites,
+    )
+    if preview is None:
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
+        return
+
+    await state.set_state(CreateRequestFlow.waiting_confirm)
+    await message.answer(
+        "Шаг подтверждения.\n" + preview + "\n\nПодтвердить создание заявки?",
+        reply_markup=request_confirm_keyboard(),
+    )
+
+
+@router.message(CreateRequestFlow.waiting_confirm)
+async def request_confirm(message: Message, state: FSMContext) -> None:
+    choice = (message.text or "").strip()
+    if choice == EDIT_TEXT:
+        await state.set_state(CreateRequestFlow.waiting_direction)
+        await message.answer(
+            "Ок, изменяем заявку.\nШаг 1/5. Выберите направление кнопкой ниже.",
+            reply_markup=direction_keyboard(available_directions()),
+        )
+        return
+
+    if choice != CONFIRM_TEXT:
+        await message.answer("Выберите действие кнопкой ниже.", reply_markup=request_confirm_keyboard())
+        return
+
+    if message.from_user is None:
+        await state.clear()
+        await message.answer("Не удалось определить пользователя. Начните заявку заново.", reply_markup=_menu(message))
+        return
+
+    data = await state.get_data()
+    direction = data.get("direction")
+    amount_raw = data.get("amount")
+    request_full_name = data.get("request_full_name")
+    request_phone = data.get("request_phone")
+    requisites = data.get("request_requisites")
+    if not direction or amount_raw is None or not request_full_name or not request_phone or not requisites:
         await state.clear()
         await message.answer(
             "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
@@ -306,6 +475,7 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
             chat_id=settings.bot_operator_chat_id,
             text=(
                 f"Новая заявка #{request.id}\n"
+                f"Статус: Новая\n"
                 f"user_id={message.from_user.id}\n"
                 f"username={('@' + message.from_user.username) if message.from_user.username else '-'}\n"
                 f"Направление: {direction}\n"
@@ -316,9 +486,11 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
                 f"Телефон: {request_phone}\n"
                 f"Реквизиты: {requisites}"
             ),
+            reply_markup=_operator_request_actions_keyboard(request.id),
         )
     except (TelegramBadRequest, TelegramForbiddenError) as exc:
         logger.error("Failed to deliver request #%s to operator chat: %s", request.id, exc)
+
     await state.clear()
     operator_username = _operator_username_for_user()
     operator_line = f"\nОператор: {operator_username}" if operator_username else ""

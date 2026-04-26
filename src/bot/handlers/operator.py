@@ -1,13 +1,20 @@
+from datetime import datetime
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
+from aiogram.types import CallbackQuery, KeyboardButton, Message, ReplyKeyboardMarkup
 from sqlalchemy import select
 
-from src.bot.keyboards.main import aml_status_keyboard, main_menu_keyboard, request_status_keyboard
+from src.bot.keyboards.main import (
+    aml_status_keyboard,
+    main_menu_keyboard,
+    operator_commands_keyboard,
+    request_status_keyboard,
+)
 from src.bot.states.request_flow import OperatorFlow
 from src.config import get_settings
-from src.db.models import AmlCheck, AmlStatus, RequestStatus, User
+from src.db.models import AmlCheck, AmlStatus, ExchangeRequest, RequestStatus, User
 from src.db.session import SessionLocal
 from src.services.app_settings import get_margin_percent, set_margin_percent
 from src.services.exchange_requests import get_request_by_id, update_request_status
@@ -16,24 +23,38 @@ from src.services.rates import RateServiceError, available_directions, get_quote
 router = Router()
 settings = get_settings()
 CANCEL_TEXT = "Отмена"
+BACK_TEXT = "Назад"
+OPEN_OPERATOR_MENU_TEXT = "Команды оператора"
 
 STATUS_ALIASES: dict[str, RequestStatus] = {
     "new": RequestStatus.NEW,
+    "новая": RequestStatus.NEW,
     "waiting_payment": RequestStatus.WAITING_PAYMENT,
+    "ожидает оплату": RequestStatus.WAITING_PAYMENT,
     "payment_received": RequestStatus.PAYMENT_RECEIVED,
+    "оплата получена": RequestStatus.PAYMENT_RECEIVED,
     "processing": RequestStatus.PROCESSING,
+    "в обработке": RequestStatus.PROCESSING,
     "done": RequestStatus.DONE,
+    "выполнена": RequestStatus.DONE,
     "canceled": RequestStatus.CANCELED,
     "cancelled": RequestStatus.CANCELED,
+    "отменена": RequestStatus.CANCELED,
     "disputed": RequestStatus.DISPUTED,
+    "спор": RequestStatus.DISPUTED,
 }
 
 AML_ALIASES: dict[str, AmlStatus] = {
     "pending": AmlStatus.PENDING,
+    "ожидает": AmlStatus.PENDING,
     "low": AmlStatus.LOW,
+    "низкий риск": AmlStatus.LOW,
     "medium": AmlStatus.MEDIUM,
+    "средний риск": AmlStatus.MEDIUM,
     "high": AmlStatus.HIGH,
+    "высокий риск": AmlStatus.HIGH,
     "rejected": AmlStatus.REJECTED,
+    "отклонено": AmlStatus.REJECTED,
 }
 
 
@@ -47,12 +68,142 @@ def _operator_menu() -> object:
     return main_menu_keyboard(settings.bot_mini_app_url, is_operator=True)
 
 
+def _operator_commands_menu() -> object:
+    return operator_commands_keyboard()
+
+
 def _cancel_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text=CANCEL_TEXT)]], resize_keyboard=True)
 
 
 def _format_direction(direction: str) -> str:
     return direction.replace("->", " -> ")
+
+
+REQUEST_STATUS_TITLES: dict[RequestStatus, str] = {
+    RequestStatus.NEW: "Новая",
+    RequestStatus.WAITING_PAYMENT: "Ожидает оплату",
+    RequestStatus.PAYMENT_RECEIVED: "Оплата получена",
+    RequestStatus.PROCESSING: "В обработке",
+    RequestStatus.DONE: "Выполнена",
+    RequestStatus.CANCELED: "Отменена",
+    RequestStatus.DISPUTED: "Спор",
+}
+
+AML_STATUS_TITLES: dict[AmlStatus, str] = {
+    AmlStatus.PENDING: "Ожидает",
+    AmlStatus.LOW: "Низкий риск",
+    AmlStatus.MEDIUM: "Средний риск",
+    AmlStatus.HIGH: "Высокий риск",
+    AmlStatus.REJECTED: "Отклонено",
+}
+
+
+def _format_created_at(value: datetime | None) -> str:
+    if value is None:
+        return "-"
+    return value.strftime("%d.%m.%Y %H:%M")
+
+
+def _request_status_title(status: RequestStatus) -> str:
+    return REQUEST_STATUS_TITLES.get(status, status.value)
+
+
+def _aml_status_title(status: AmlStatus) -> str:
+    return AML_STATUS_TITLES.get(status, status.value)
+
+
+async def _send_requests_history(message: Message) -> None:
+    async with SessionLocal() as session:
+        rows = await session.execute(
+            select(ExchangeRequest, User)
+            .join(User, ExchangeRequest.user_id == User.id, isouter=True)
+            .order_by(ExchangeRequest.created_at.desc())
+        )
+        items = rows.all()
+
+    if not items:
+        await message.answer("Пока нет ни одной заявки.")
+        return
+
+    lines: list[str] = []
+    for request, user in items:
+        user_ref = "-"
+        if user is not None:
+            user_ref = f"@{user.username}" if user.username else f"id:{user.telegram_id}"
+        lines.append(
+            (
+                f"#{request.id} | {_format_created_at(request.created_at)}\n"
+                f"{_format_direction(request.direction)} | {request.amount_send:.2f} -> {request.amount_receive:.2f}\n"
+                f"Статус: {_request_status_title(request.status)} | Пользователь: {user_ref}"
+            )
+        )
+
+    chunk = "📋 <b>История заявок</b>\n\n"
+    for line in lines:
+        block = f"{line}\n\n"
+        if len(chunk) + len(block) > 3500:
+            await message.answer(chunk)
+            chunk = block
+        else:
+            chunk += block
+    if chunk.strip():
+        await message.answer(chunk)
+
+
+@router.callback_query(F.data.startswith("opreq:"))
+async def operator_quick_request_status(callback: CallbackQuery) -> None:
+    if callback.from_user is None or callback.from_user.id not in settings.operator_ids:
+        await callback.answer("Доступно только оператору.", show_alert=True)
+        return
+
+    data = callback.data or ""
+    parts = data.split(":")
+    if len(parts) != 3:
+        await callback.answer("Некорректные данные кнопки.", show_alert=True)
+        return
+
+    _, request_id_raw, status_raw = parts
+    if not request_id_raw.isdigit():
+        await callback.answer("Некорректный номер заявки.", show_alert=True)
+        return
+    status = STATUS_ALIASES.get(status_raw.strip().lower())
+    if status is None:
+        await callback.answer("Неизвестный статус.", show_alert=True)
+        return
+
+    request_id = int(request_id_raw)
+    async with SessionLocal() as session:
+        request = await get_request_by_id(session, request_id)
+        if request is None:
+            await callback.answer("Заявка не найдена.", show_alert=True)
+            return
+        if request.status == status:
+            await callback.answer("У заявки уже этот статус.")
+            return
+
+        await update_request_status(
+            session=session,
+            request=request,
+            new_status=status,
+            changed_by=f"operator:{callback.from_user.id}",
+            comment="Изменено кнопкой оператора",
+        )
+        user = await session.scalar(select(User).where(User.id == request.user_id))
+        await session.commit()
+
+    status_label = _request_status_title(status)
+    await callback.answer(f"Статус обновлен: {status_label}")
+    if callback.message and getattr(callback.message, "chat", None):
+        await callback.bot.send_message(
+            chat_id=callback.message.chat.id,
+            text=f"Заявка #{request_id}: статус изменен на «{status_label}».",
+        )
+    if user:
+        await callback.bot.send_message(
+            chat_id=user.telegram_id,
+            text=f"Заявка #{request_id}: новый статус {status_label}\nКомментарий: Изменено оператором",
+        )
 
 
 @router.message(
@@ -69,7 +220,25 @@ def _format_direction(direction: str) -> str:
 )
 async def operator_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Операция отменена.", reply_markup=_operator_menu())
+    await message.answer("Операция отменена.", reply_markup=_operator_commands_menu())
+
+
+@router.message(F.text == OPEN_OPERATOR_MENU_TEXT)
+async def operator_open_menu(message: Message, state: FSMContext) -> None:
+    if not _is_operator(message):
+        await message.answer("Действие доступно только оператору.")
+        return
+
+    await state.clear()
+    await message.answer("Выберите действие оператора:", reply_markup=_operator_commands_menu())
+
+
+@router.message(F.text == BACK_TEXT)
+async def operator_back_to_main(message: Message, state: FSMContext) -> None:
+    if not _is_operator(message):
+        return
+    await state.clear()
+    await message.answer("Главное меню.", reply_markup=_operator_menu())
 
 
 @router.message(Command("margin"))
@@ -106,7 +275,7 @@ async def set_bot_margin(message: Message, command: CommandObject) -> None:
     await message.answer(f"Маржа обновлена: {margin_percent:.2f}%")
 
 
-@router.message(F.text == "Опер: Курсы+маржа")
+@router.message(F.text.in_({"Опер: Курсы+маржа", "Курсы и маржа"}))
 async def operator_show_rates(message: Message) -> None:
     if not _is_operator(message):
         await message.answer("Действие доступно только оператору.")
@@ -120,7 +289,7 @@ async def operator_show_rates(message: Message) -> None:
         try:
             quote = await get_quote(direction, margin_percent, settings)
         except RateServiceError:
-            await message.answer("Сервис курсов временно недоступен.", reply_markup=_operator_menu())
+            await message.answer("Сервис курсов временно недоступен.", reply_markup=_operator_commands_menu())
             return
         blocks.append(
             (
@@ -131,10 +300,13 @@ async def operator_show_rates(message: Message) -> None:
             )
         )
 
-    await message.answer("<b>Курсы для оператора</b>\n\n" + "\n\n".join(blocks), reply_markup=_operator_menu())
+    await message.answer(
+        "<b>Курсы для оператора</b>\n\n" + "\n\n".join(blocks),
+        reply_markup=_operator_commands_menu(),
+    )
 
 
-@router.message(F.text == "Опер: Маржа")
+@router.message(F.text.in_({"Опер: Маржа", "Маржа"}))
 async def operator_margin_start(message: Message, state: FSMContext) -> None:
     if not _is_operator(message):
         await message.answer("Действие доступно только оператору.")
@@ -170,17 +342,18 @@ async def operator_margin_apply(message: Message, state: FSMContext) -> None:
         await set_margin_percent(session, margin_percent)
         await session.commit()
     await state.clear()
-    await message.answer(f"Маржа обновлена: {margin_percent:.2f}%", reply_markup=_operator_menu())
+    await message.answer(f"Маржа обновлена: {margin_percent:.2f}%", reply_markup=_operator_commands_menu())
 
 
-@router.message(F.text == "Опер: Статус заявки")
+@router.message(F.text.in_({"Опер: Статус заявки", "Статус заявки"}))
 async def operator_status_start(message: Message, state: FSMContext) -> None:
     if not _is_operator(message):
         await message.answer("Действие доступно только оператору.")
         return
 
+    await _send_requests_history(message)
     await state.set_state(OperatorFlow.waiting_request_id)
-    await message.answer("Введите номер заявки (request_id).", reply_markup=_cancel_menu())
+    await message.answer("Введите номер заявки (ID из списка выше).", reply_markup=_cancel_menu())
 
 
 @router.message(OperatorFlow.waiting_request_id)
@@ -229,7 +402,10 @@ async def operator_status_apply(message: Message, state: FSMContext) -> None:
     status_value = data.get("request_status")
     if request_id is None or not status_value:
         await state.clear()
-        await message.answer("Сессия обновления статуса устарела. Повторите заново.", reply_markup=_operator_menu())
+        await message.answer(
+            "Сессия обновления статуса устарела. Повторите заново.",
+            reply_markup=_operator_commands_menu(),
+        )
         return
 
     status = STATUS_ALIASES[status_value]
@@ -240,7 +416,7 @@ async def operator_status_apply(message: Message, state: FSMContext) -> None:
         request = await get_request_by_id(session, request_id)
         if request is None:
             await state.clear()
-            await message.answer(f"Заявка #{request_id} не найдена.", reply_markup=_operator_menu())
+            await message.answer(f"Заявка #{request_id} не найдена.", reply_markup=_operator_commands_menu())
             return
 
         await update_request_status(
@@ -254,15 +430,19 @@ async def operator_status_apply(message: Message, state: FSMContext) -> None:
         await session.commit()
 
     await state.clear()
-    await message.answer(f"Статус заявки #{request_id} обновлен: {status.value}", reply_markup=_operator_menu())
+    status_label = _request_status_title(status)
+    await message.answer(
+        f"Статус заявки #{request_id} обновлен: {status_label}",
+        reply_markup=_operator_commands_menu(),
+    )
     if user:
         await message.bot.send_message(
             chat_id=user.telegram_id,
-            text=f"Заявка #{request_id}: новый статус {status.value}\nКомментарий: {comment or '-'}",
+            text=f"Заявка #{request_id}: новый статус {status_label}\nКомментарий: {comment or '-'}",
         )
 
 
-@router.message(F.text == "Опер: AML статус")
+@router.message(F.text.in_({"Опер: AML статус", "AML статус"}))
 async def operator_aml_start(message: Message, state: FSMContext) -> None:
     if not _is_operator(message):
         await message.answer("Действие доступно только оператору.")
@@ -318,7 +498,10 @@ async def operator_aml_apply(message: Message, state: FSMContext) -> None:
     status_value = data.get("aml_status")
     if aml_id is None or not status_value:
         await state.clear()
-        await message.answer("Сессия AML обновления устарела. Повторите заново.", reply_markup=_operator_menu())
+        await message.answer(
+            "Сессия AML обновления устарела. Повторите заново.",
+            reply_markup=_operator_commands_menu(),
+        )
         return
 
     status = AML_ALIASES[status_value]
@@ -329,17 +512,18 @@ async def operator_aml_apply(message: Message, state: FSMContext) -> None:
         aml = await session.scalar(select(AmlCheck).where(AmlCheck.id == aml_id))
         if aml is None:
             await state.clear()
-            await message.answer(f"AML запрос #{aml_id} не найден.", reply_markup=_operator_menu())
+            await message.answer(f"AML запрос #{aml_id} не найден.", reply_markup=_operator_commands_menu())
             return
         aml.status = status
         aml.result_note = note
         await session.commit()
 
     await state.clear()
-    await message.answer(f"AML запрос #{aml_id} обновлен: {status.value}", reply_markup=_operator_menu())
+    status_label = _aml_status_title(status)
+    await message.answer(f"AML запрос #{aml_id} обновлен: {status_label}", reply_markup=_operator_commands_menu())
     await message.bot.send_message(
         chat_id=aml.telegram_user_id,
-        text=f"AML запрос #{aml_id}: результат {status.value}\nКомментарий: {note or '-'}",
+        text=f"AML запрос #{aml_id}: результат {status_label}\nКомментарий: {note or '-'}",
     )
 
 
@@ -366,7 +550,7 @@ async def set_request_status(message: Message, command: CommandObject) -> None:
 
     status = STATUS_ALIASES.get(status_raw)
     if status is None:
-        allowed = ", ".join(STATUS_ALIASES.keys())
+        allowed = ", ".join(status.value for status in RequestStatus)
         await message.answer(f"Неизвестный статус. Допустимые: {allowed}")
         return
 
@@ -387,12 +571,13 @@ async def set_request_status(message: Message, command: CommandObject) -> None:
         user = await session.scalar(select(User).where(User.id == request.user_id))
         await session.commit()
 
-    await message.answer(f"Статус заявки #{request_id} обновлен: {status.value}")
+    status_label = _request_status_title(status)
+    await message.answer(f"Статус заявки #{request_id} обновлен: {status_label}")
     if user:
         note = comment or "-"
         await message.bot.send_message(
             chat_id=user.telegram_id,
-            text=f"Заявка #{request_id}: новый статус {status.value}\nКомментарий: {note}",
+            text=f"Заявка #{request_id}: новый статус {status_label}\nКомментарий: {note}",
         )
 
 
@@ -419,7 +604,7 @@ async def set_aml_status(message: Message, command: CommandObject) -> None:
 
     status = AML_ALIASES.get(status_raw)
     if status is None:
-        allowed = ", ".join(AML_ALIASES.keys())
+        allowed = ", ".join(status.value for status in AmlStatus)
         await message.answer(f"Неизвестный AML-статус. Допустимые: {allowed}")
         return
 
@@ -433,8 +618,9 @@ async def set_aml_status(message: Message, command: CommandObject) -> None:
         aml.result_note = note
         await session.commit()
 
-    await message.answer(f"AML запрос #{aml_id} обновлен: {status.value}")
+    status_label = _aml_status_title(status)
+    await message.answer(f"AML запрос #{aml_id} обновлен: {status_label}")
     await message.bot.send_message(
         chat_id=aml.telegram_user_id,
-        text=f"AML запрос #{aml_id}: результат {status.value}\nКомментарий: {note or '-'}",
+        text=f"AML запрос #{aml_id}: результат {status_label}\nКомментарий: {note or '-'}",
     )

@@ -24,10 +24,39 @@ def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> Rep
         )
 
     if is_operator:
-        keyboard.append([KeyboardButton(text="Опер: Курсы+маржа"), KeyboardButton(text="Опер: Маржа")])
-        keyboard.append([KeyboardButton(text="Опер: Статус заявки"), KeyboardButton(text="Опер: AML статус")])
+        keyboard.append([KeyboardButton(text="Команды оператора")])
 
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def operator_commands_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Курсы и маржа"), KeyboardButton(text="Маржа")],
+            [KeyboardButton(text="Статус заявки"), KeyboardButton(text="AML статус")],
+            [KeyboardButton(text="Назад")],
+        ],
+        resize_keyboard=True,
+    )
+
+
+def back_cancel_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Назад"), KeyboardButton(text="Отмена")],
+        ],
+        resize_keyboard=True,
+    )
+
+
+def request_confirm_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Подтвердить"), KeyboardButton(text="Изменить")],
+            [KeyboardButton(text="Назад"), KeyboardButton(text="Отмена")],
+        ],
+        resize_keyboard=True,
+    )
 
 
 def direction_keyboard(directions: list[str]) -> ReplyKeyboardMarkup:
@@ -50,10 +79,10 @@ def direction_keyboard(directions: list[str]) -> ReplyKeyboardMarkup:
 def request_status_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="new"), KeyboardButton(text="waiting_payment")],
-            [KeyboardButton(text="payment_received"), KeyboardButton(text="processing")],
-            [KeyboardButton(text="done"), KeyboardButton(text="canceled")],
-            [KeyboardButton(text="disputed"), KeyboardButton(text="Отмена")],
+            [KeyboardButton(text="Новая"), KeyboardButton(text="Ожидает оплату")],
+            [KeyboardButton(text="Оплата получена"), KeyboardButton(text="В обработке")],
+            [KeyboardButton(text="Выполнена"), KeyboardButton(text="Отменена")],
+            [KeyboardButton(text="Спор"), KeyboardButton(text="Отмена")],
         ],
         resize_keyboard=True,
     )
@@ -62,9 +91,9 @@ def request_status_keyboard() -> ReplyKeyboardMarkup:
 def aml_status_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="pending"), KeyboardButton(text="low")],
-            [KeyboardButton(text="medium"), KeyboardButton(text="high")],
-            [KeyboardButton(text="rejected"), KeyboardButton(text="Отмена")],
+            [KeyboardButton(text="Ожидает"), KeyboardButton(text="Низкий риск")],
+            [KeyboardButton(text="Средний риск"), KeyboardButton(text="Высокий риск")],
+            [KeyboardButton(text="Отклонено"), KeyboardButton(text="Отмена")],
         ],
         resize_keyboard=True,
     )
