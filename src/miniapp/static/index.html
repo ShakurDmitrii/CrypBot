@@ -3,19 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sky Mini App</title>
+    <title>НЕБО Обмен</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
-        --bg: #f5f7fb;
-        --surface: #ffffff;
-        --text: #1e293b;
-        --muted: #64748b;
-        --primary: #0ea5e9;
-        --primary-2: #0284c7;
-        --border: #dbe5f0;
-        --danger: #dc2626;
-        --ok: #16a34a;
+        --bg-1: #051319;
+        --bg-2: #0b2430;
+        --bg-3: #163948;
+        --card: rgba(5, 23, 31, 0.64);
+        --card-strong: rgba(4, 18, 25, 0.88);
+        --line: rgba(58, 229, 201, 0.35);
+        --line-soft: rgba(58, 229, 201, 0.2);
+        --text: #eaf8f7;
+        --text-soft: #b8d2d1;
+        --accent: #3ae5c9;
+        --accent-2: #4cc3ff;
+        --danger: #ff8a8a;
+        --ok: #8bffd7;
       }
 
       * {
@@ -24,98 +28,230 @@
 
       body {
         margin: 0;
-        font-family: "Segoe UI", Tahoma, sans-serif;
-        background: linear-gradient(160deg, #f5f7fb 0%, #e6f6ff 100%);
+        min-height: 100vh;
+        font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
         color: var(--text);
+        background:
+          radial-gradient(80% 40% at 12% 0%, rgba(76, 195, 255, 0.3), transparent 60%),
+          radial-gradient(55% 55% at 88% 20%, rgba(58, 229, 201, 0.16), transparent 65%),
+          linear-gradient(160deg, var(--bg-2), var(--bg-1) 42%, var(--bg-3));
       }
 
-      .wrap {
-        max-width: 720px;
+      .bg-lines::before,
+      .bg-lines::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .bg-lines::before {
+        background:
+          linear-gradient(120deg, transparent 10%, rgba(255, 255, 255, 0.04) 36%, transparent 52%),
+          linear-gradient(121deg, transparent 18%, rgba(255, 255, 255, 0.03) 48%, transparent 76%);
+      }
+
+      .bg-lines::after {
+        background:
+          radial-gradient(1px 1px at 24% 10%, rgba(255, 255, 255, 0.26), transparent),
+          radial-gradient(1px 1px at 80% 16%, rgba(255, 255, 255, 0.2), transparent),
+          radial-gradient(1px 1px at 70% 74%, rgba(255, 255, 255, 0.2), transparent),
+          radial-gradient(1px 1px at 8% 62%, rgba(255, 255, 255, 0.2), transparent);
+      }
+
+      .app {
+        max-width: 860px;
         margin: 0 auto;
-        padding: 16px;
+        padding: 14px 12px 26px;
+        position: relative;
+        z-index: 2;
       }
 
-      h1 {
-        margin: 0 0 8px;
-        font-size: 24px;
+      .hero {
+        border: 1px solid var(--line-soft);
+        border-radius: 20px;
+        padding: 18px 16px;
+        background: linear-gradient(150deg, rgba(7, 31, 42, 0.9), rgba(8, 23, 31, 0.74));
+        box-shadow: 0 10px 34px rgba(0, 0, 0, 0.34);
       }
 
-      .sub {
-        margin: 0 0 16px;
-        color: var(--muted);
-      }
-
-      .grid {
-        display: grid;
+      .brand {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         gap: 12px;
       }
 
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 12px;
+      .brand-title {
+        margin: 0;
+        font-size: 44px;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .brand-sub {
+        margin: 6px 0 0;
+        color: var(--text-soft);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .live-dot {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-soft);
+      }
+
+      .live-dot i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(58, 229, 201, 0.8);
+      }
+
+      .menu {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .menu.two {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .action {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 12px;
+        background: var(--card);
+        color: var(--text);
+        font: inherit;
+        font-size: 18px;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .action:hover {
+        transform: translateY(-1px);
+        border-color: rgba(76, 195, 255, 0.55);
+        background: rgba(13, 39, 51, 0.88);
+      }
+
+      .view {
+        display: none;
+        margin-top: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 18px;
+        background: var(--card-strong);
+        padding: 14px;
+      }
+
+      .view.active {
+        display: block;
+        animation: fadeIn 0.24s ease;
+      }
+
+      .view-title {
+        margin: 0 0 12px;
+        font-size: 27px;
+        letter-spacing: 0.01em;
+      }
+
+      .muted {
+        color: var(--text-soft);
+        line-height: 1.5;
+      }
+
+      .field {
+        margin-bottom: 12px;
       }
 
       .label {
         display: block;
-        font-size: 13px;
-        color: var(--muted);
         margin-bottom: 6px;
+        color: var(--text-soft);
+        font-size: 13px;
       }
 
       .input {
         width: 100%;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        padding: 12px;
         font: inherit;
-        background: #fff;
+        color: var(--text);
+        background: rgba(3, 16, 24, 0.85);
       }
 
-      .btn-row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
+      .input::placeholder {
+        color: rgba(193, 223, 223, 0.54);
       }
 
-      .dir-btn,
-      .btn {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px 12px;
+      .row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .direction {
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: rgba(8, 27, 37, 0.85);
+        padding: 11px;
+        color: var(--text);
         font: inherit;
         cursor: pointer;
-        background: #fff;
       }
 
-      .dir-btn.active {
-        border-color: var(--primary);
-        background: #e0f2fe;
-      }
-
-      .btn.primary {
-        background: var(--primary);
-        color: #fff;
-        border-color: var(--primary);
-      }
-
-      .btn.primary:hover {
-        background: var(--primary-2);
-      }
-
-      .hint {
-        color: var(--muted);
-        font-size: 13px;
+      .direction.active {
+        border-color: rgba(76, 195, 255, 0.82);
+        box-shadow: inset 0 0 0 1px rgba(76, 195, 255, 0.38);
+        background: rgba(13, 40, 54, 0.93);
       }
 
       .result {
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 12px;
+        background: rgba(8, 23, 30, 0.9);
         white-space: pre-line;
-        line-height: 1.45;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+
+      .btn {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 14px;
+        background: rgba(7, 31, 42, 0.85);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        background: linear-gradient(150deg, #1ea59d, #1780bc);
+        border-color: rgba(140, 246, 233, 0.55);
+      }
+
+      .btn.back {
+        margin-top: 14px;
       }
 
       .status {
-        font-size: 13px;
+        margin-top: 10px;
+        font-size: 14px;
       }
 
       .status.ok {
@@ -127,51 +263,124 @@
       }
 
       .history-item {
-        padding: 8px 0;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--line-soft);
+        padding: 10px 0;
+        line-height: 1.45;
       }
 
       .history-item:first-child {
         border-top: 0;
       }
+
+      .about p {
+        margin: 0 0 12px;
+        line-height: 1.5;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 700px) {
+        .brand-title {
+          font-size: 38px;
+        }
+
+        .menu.two,
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <h1>Sky Mini App</h1>
-      <p class="sub">Калькулятор и заявка обмена</p>
-
-      <div class="grid">
-        <section class="card">
-          <label class="label">Направление обмена</label>
-          <div id="directions" class="btn-row"></div>
-        </section>
-
-        <section class="card">
-          <label class="label" for="amount">Сумма отправки</label>
-          <input id="amount" class="input" type="number" min="0" step="0.000001" placeholder="Например, 1000" />
-          <div class="btn-row" style="margin-top: 10px">
-            <button id="calcBtn" class="btn primary" type="button">Рассчитать</button>
+    <div class="bg-lines"></div>
+    <main class="app">
+      <section class="hero">
+        <div class="brand">
+          <div>
+            <h1 class="brand-title">НЕБО</h1>
+            <p class="brand-sub">КРИПТООБМЕННИК • МОСКВА</p>
           </div>
-          <p id="calcResult" class="result hint"></p>
-        </section>
+          <span class="live-dot"><i></i>online</span>
+        </div>
 
-        <section class="card">
-          <label class="label" for="requisites">Реквизиты для получения</label>
-          <input id="requisites" class="input" type="text" placeholder="Карта, кошелек, банковские реквизиты" />
-          <div class="btn-row" style="margin-top: 10px">
-            <button id="createBtn" class="btn primary" type="button">Создать заявку</button>
-            <button id="historyBtn" class="btn" type="button">Обновить историю</button>
-          </div>
-          <p id="statusText" class="status hint"></p>
-        </section>
+        <div class="menu">
+          <button class="action" data-view-target="calcView">Купить / Продать USDT</button>
+        </div>
 
-        <section class="card">
-          <h3 style="margin: 0 0 10px">История заявок</h3>
-          <div id="history" class="hint">Загрузка...</div>
-        </section>
-      </div>
-    </div>
+        <div class="menu two">
+          <button class="action" data-view-target="rateView">Курс</button>
+          <button class="action" data-view-target="historyView">Все заявки</button>
+          <button class="action" id="supportBtn" type="button">Поддержка</button>
+          <button class="action" data-view-target="aboutView">О нас</button>
+        </div>
+
+        <div class="menu">
+          <button class="action" id="amlBtn" type="button">AML проверка</button>
+          <button class="action" id="exchangeBtn" type="button">Биржа Rapira</button>
+        </div>
+      </section>
+
+      <section id="calcView" class="view">
+        <h2 class="view-title">Калькулятор</h2>
+        <p class="muted">Работает в обе стороны: RUB → USDT и USDT → RUB.</p>
+        <div class="row" id="directions"></div>
+        <div class="field">
+          <label class="label" id="amountLabel" for="amountInput">Сумма отправки</label>
+          <input class="input" id="amountInput" type="number" min="0" step="0.000001" placeholder="Например, 1000" />
+        </div>
+        <div class="field">
+          <label class="label" for="requisitesInput">Реквизиты для получения</label>
+          <input class="input" id="requisitesInput" type="text" maxlength="512" placeholder="Карта, кошелек или банковские реквизиты" />
+        </div>
+        <div class="buttons">
+          <button class="btn primary" id="calcBtn" type="button">Рассчитать</button>
+          <button class="btn" id="createBtn" type="button">Создать заявку</button>
+        </div>
+        <div class="result muted" id="calcResult">Выберите направление и введите сумму.</div>
+        <div class="status muted" id="calcStatus"></div>
+        <button class="btn back" data-view-target="" type="button">На главную</button>
+      </section>
+
+      <section id="rateView" class="view">
+        <h2 class="view-title">Текущий курс</h2>
+        <div class="result muted" id="rateResult">Нажмите «Обновить курс».</div>
+        <div class="buttons">
+          <button class="btn primary" id="refreshRateBtn" type="button">Обновить курс</button>
+        </div>
+        <button class="btn back" data-view-target="" type="button">На главную</button>
+      </section>
+
+      <section id="historyView" class="view">
+        <h2 class="view-title">Все заявки</h2>
+        <div id="historyList" class="muted">Загрузка...</div>
+        <div class="buttons">
+          <button class="btn" id="refreshHistoryBtn" type="button">Обновить</button>
+        </div>
+        <button class="btn back" data-view-target="" type="button">На главную</button>
+      </section>
+
+      <section id="aboutView" class="view about">
+        <h2 class="view-title">О нас</h2>
+        <p>Занимаемся обменом криптовалют более 3 лет.</p>
+        <p>Работаем 24/7. При первом визите в офис потребуется паспорт.</p>
+        <p>Работаем только за наличные рубли.</p>
+        <p>Мы работаем стол в стол, не храним ваши средства у себя.</p>
+        <p>У нас можно купить USDT без комиссии по одному из лучших курсов в Москве.</p>
+        <p>Наш адрес: г. Москва, Пресненская набережная, 12, Башня Федерация Восток, этаж 11.</p>
+        <p>Для получения пропуска в офис и покупки USDT, создайте заявку через бота.</p>
+        <p>Гостевой пропуск выдается на ресепшене: на -1 этаже с 8:00 до 19:00 и на 1 этаже с 19:00 до 8:00.</p>
+        <button class="btn back" data-view-target="" type="button">Перейти на главный экран</button>
+      </section>
+    </main>
 
     <script>
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -183,25 +392,44 @@
       const state = {
         telegramId: tg?.initDataUnsafe?.user?.id ?? null,
         username: tg?.initDataUnsafe?.user?.username ?? null,
-        fullName: [tg?.initDataUnsafe?.user?.first_name, tg?.initDataUnsafe?.user?.last_name].filter(Boolean).join(" ") || null,
+        fullName:
+          [tg?.initDataUnsafe?.user?.first_name, tg?.initDataUnsafe?.user?.last_name]
+            .filter(Boolean)
+            .join(" ") || null,
         direction: null,
+        directions: [],
       };
 
+      const views = [...document.querySelectorAll(".view")];
       const directionsEl = document.getElementById("directions");
-      const amountEl = document.getElementById("amount");
-      const requisitesEl = document.getElementById("requisites");
-      const calcResultEl = document.getElementById("calcResult");
-      const statusTextEl = document.getElementById("statusText");
-      const historyEl = document.getElementById("history");
+      const amountInput = document.getElementById("amountInput");
+      const requisitesInput = document.getElementById("requisitesInput");
+      const calcResult = document.getElementById("calcResult");
+      const calcStatus = document.getElementById("calcStatus");
+      const amountLabel = document.getElementById("amountLabel");
+      const rateResult = document.getElementById("rateResult");
+      const historyList = document.getElementById("historyList");
 
-      function setStatus(message, ok = true) {
-        statusTextEl.textContent = message;
-        statusTextEl.className = `status ${ok ? "ok" : "err"}`;
+      function openView(viewId) {
+        views.forEach((view) => view.classList.remove("active"));
+        if (!viewId) {
+          return;
+        }
+        const target = document.getElementById(viewId);
+        if (target) {
+          target.classList.add("active");
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       }
 
-      function clearStatus() {
-        statusTextEl.textContent = "";
-        statusTextEl.className = "status hint";
+      function setCalcStatus(message, ok = true) {
+        calcStatus.textContent = message;
+        calcStatus.className = `status ${ok ? "ok" : "err"}`;
+      }
+
+      function clearCalcStatus() {
+        calcStatus.textContent = "";
+        calcStatus.className = "status muted";
       }
 
       function getTelegramId() {
@@ -233,20 +461,39 @@
         return response.json();
       }
 
+      function getCurrenciesByDirection(direction) {
+        if (direction === "RUB->USDT") {
+          return { send: "RUB", receive: "USDT" };
+        }
+        if (direction === "USDT->RUB") {
+          return { send: "USDT", receive: "RUB" };
+        }
+        return { send: "amount", receive: "amount" };
+      }
+
+      function applyDirection(direction) {
+        state.direction = direction;
+        [...directionsEl.querySelectorAll(".direction")].forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.direction === direction);
+        });
+        const c = getCurrenciesByDirection(direction);
+        amountLabel.textContent = `Сумма отправки (${c.send})`;
+      }
+
       function renderDirections(items) {
         directionsEl.innerHTML = "";
-        items.forEach((item) => {
+        state.directions = items;
+        items.forEach((item, index) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "dir-btn";
-          btn.textContent = item.label;
+          btn.className = "direction";
           btn.dataset.direction = item.id;
-          btn.addEventListener("click", () => {
-            state.direction = item.id;
-            [...directionsEl.querySelectorAll(".dir-btn")].forEach((x) => x.classList.remove("active"));
-            btn.classList.add("active");
-          });
+          btn.textContent = item.label;
+          btn.addEventListener("click", () => applyDirection(item.id));
           directionsEl.appendChild(btn);
+          if (index === 0) {
+            applyDirection(item.id);
+          }
         });
       }
 
@@ -255,16 +502,17 @@
         renderDirections(data.items || []);
       }
 
-      async function onCalc() {
-        clearStatus();
-        const amount = Number(amountEl.value);
+      async function calculate() {
+        clearCalcStatus();
         if (!state.direction) {
-          setStatus("Сначала выберите направление обмена.", false);
-          return;
+          setCalcStatus("Сначала выберите направление обмена.", false);
+          return null;
         }
+
+        const amount = Number(amountInput.value);
         if (!Number.isFinite(amount) || amount <= 0) {
-          setStatus("Введите корректную сумму отправки.", false);
-          return;
+          setCalcStatus("Введите корректную сумму отправки.", false);
+          return null;
         }
 
         const data = await api("/api/calc", {
@@ -275,33 +523,37 @@
           }),
         });
 
-        calcResultEl.textContent =
-          `Направление: ${data.direction}\n` +
+        const c = getCurrenciesByDirection(state.direction);
+        calcResult.textContent =
+          `Направление: ${data.direction.replace("->", " -> ")}\n` +
+          `Вы отправляете: ${Number(data.amount_send).toFixed(6)} ${c.send}\n` +
+          `Вы получаете: ${Number(data.amount_receive).toFixed(6)} ${c.receive}\n` +
           `Базовый курс: ${Number(data.base_rate).toFixed(6)}\n` +
           `Маржа: +${Number(data.margin_percent).toFixed(2)}%\n` +
-          `Итоговый курс: ${Number(data.final_rate).toFixed(6)}\n` +
-          `К получению: ${Number(data.amount_receive).toFixed(6)}`;
+          `Итоговый курс: ${Number(data.final_rate).toFixed(6)}`;
+        return data;
       }
 
-      async function onCreate() {
-        clearStatus();
+      async function createRequest() {
+        clearCalcStatus();
         const telegramId = getTelegramId();
         if (!telegramId) {
           return;
         }
 
-        const amount = Number(amountEl.value);
-        const requisites = requisitesEl.value.trim();
+        const amount = Number(amountInput.value);
+        const requisites = requisitesInput.value.trim();
+
         if (!state.direction) {
-          setStatus("Сначала выберите направление обмена.", false);
+          setCalcStatus("Сначала выберите направление обмена.", false);
           return;
         }
         if (!Number.isFinite(amount) || amount <= 0) {
-          setStatus("Введите корректную сумму отправки.", false);
+          setCalcStatus("Введите корректную сумму отправки.", false);
           return;
         }
         if (!requisites) {
-          setStatus("Введите реквизиты для получения.", false);
+          setCalcStatus("Введите реквизиты для получения.", false);
           return;
         }
 
@@ -317,44 +569,99 @@
           }),
         });
 
-        setStatus(`Заявка #${data.id} создана. Статус: ${data.status}`, true);
+        setCalcStatus(`Заявка #${data.id} создана. Статус: ${data.status}`, true);
         await loadHistory();
+      }
+
+      async function loadRateBlock() {
+        if (!state.direction) {
+          rateResult.textContent = "Не удалось определить направление.";
+          return;
+        }
+        const probeAmount = 1;
+        const data = await api("/api/calc", {
+          method: "POST",
+          body: JSON.stringify({
+            direction: state.direction,
+            amount_send: probeAmount,
+          }),
+        });
+        const c = getCurrenciesByDirection(state.direction);
+        rateResult.textContent =
+          `Направление: ${data.direction.replace("->", " -> ")}\n` +
+          `Курс за 1 ${c.send}: ${Number(data.final_rate).toFixed(6)} ${c.receive}\n` +
+          `Маржа: +${Number(data.margin_percent).toFixed(2)}%`;
       }
 
       async function loadHistory() {
         const telegramId = getTelegramId();
         if (!telegramId) {
-          historyEl.textContent = "Укажите Telegram ID для загрузки истории.";
+          historyList.textContent = "Укажите Telegram ID для просмотра заявок.";
           return;
         }
-
         const data = await api(`/api/requests/${telegramId}`);
         const items = data.items || [];
-
         if (!items.length) {
-          historyEl.textContent = "Заявок пока нет.";
+          historyList.textContent = "Заявок пока нет.";
           return;
         }
-
-        historyEl.innerHTML = "";
+        historyList.innerHTML = "";
         items.forEach((item) => {
           const row = document.createElement("div");
           row.className = "history-item";
           row.innerHTML =
             `<div><b>#${item.id}</b> ${item.direction.replace("->", " -> ")}</div>` +
-            `<div>send=${item.amount_send} receive=${item.amount_receive}</div>` +
-            `<div>status=<b>${item.status}</b></div>`;
-          historyEl.appendChild(row);
+            `<div>Отправка: ${item.amount_send} • Получение: ${item.amount_receive}</div>` +
+            `<div>Статус: <b>${item.status}</b></div>`;
+          historyList.appendChild(row);
         });
       }
 
-      document.getElementById("calcBtn").addEventListener("click", () => onCalc().catch((e) => setStatus(e.message, false)));
-      document.getElementById("createBtn").addEventListener("click", () => onCreate().catch((e) => setStatus(e.message, false)));
-      document.getElementById("historyBtn").addEventListener("click", () => loadHistory().catch((e) => setStatus(e.message, false)));
+      function bindNavigation() {
+        document.querySelectorAll("[data-view-target]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const target = btn.getAttribute("data-view-target");
+            openView(target || "");
+          });
+        });
+      }
 
+      document.getElementById("calcBtn").addEventListener("click", () => {
+        calculate().catch((e) => setCalcStatus(e.message, false));
+      });
+      document.getElementById("createBtn").addEventListener("click", () => {
+        createRequest().catch((e) => setCalcStatus(e.message, false));
+      });
+      document.getElementById("refreshRateBtn").addEventListener("click", () => {
+        loadRateBlock().catch((e) => {
+          rateResult.textContent = `Ошибка загрузки курса: ${e.message}`;
+        });
+      });
+      document.getElementById("refreshHistoryBtn").addEventListener("click", () => {
+        loadHistory().catch((e) => {
+          historyList.textContent = `Ошибка загрузки истории: ${e.message}`;
+        });
+      });
+      document.getElementById("exchangeBtn").addEventListener("click", () => {
+        window.open("https://rapira.net/ru/exchange/BTC_USDT", "_blank", "noopener");
+      });
+      document.getElementById("supportBtn").addEventListener("click", () => {
+        if (tg?.openTelegramLink) {
+          tg.openTelegramLink("https://t.me/NeboCryptoManager");
+          return;
+        }
+        window.open("https://t.me/NeboCryptoManager", "_blank", "noopener");
+      });
+      document.getElementById("amlBtn").addEventListener("click", () => {
+        alert("Для AML-проверки напишите в боте команду: AML проверка");
+      });
+
+      bindNavigation();
       loadDirections()
-        .then(loadHistory)
-        .catch((e) => setStatus(`Ошибка загрузки: ${e.message}`, false));
+        .then(() => Promise.all([loadRateBlock(), loadHistory()]))
+        .catch((e) => {
+          setCalcStatus(`Ошибка загрузки: ${e.message}`, false);
+        });
     </script>
   </body>
-  </html>
+</html>

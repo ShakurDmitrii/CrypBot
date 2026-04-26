@@ -1,4 +1,14 @@
+from urllib.parse import urlparse
+
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+
+
+def _is_valid_telegram_webapp_url(raw_url: str) -> bool:
+    value = raw_url.strip()
+    if not value:
+        return False
+    parsed = urlparse(value)
+    return parsed.scheme == "https" and bool(parsed.netloc)
 
 
 def main_menu_keyboard(mini_app_url: str = "") -> ReplyKeyboardMarkup:
@@ -8,7 +18,7 @@ def main_menu_keyboard(mini_app_url: str = "") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="Оферта"), KeyboardButton(text="AML проверка")],
     ]
 
-    if mini_app_url.strip():
+    if _is_valid_telegram_webapp_url(mini_app_url):
         keyboard.append(
             [KeyboardButton(text="Мини-апп", web_app=WebAppInfo(url=mini_app_url.strip()))]
         )

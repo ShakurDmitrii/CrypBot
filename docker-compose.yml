@@ -1,0 +1,29 @@
+services:
+  bot:
+    build: .
+    container_name: crypbot-bot
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./data/bot.db
+    command: sh -c "alembic upgrade head && python -m src.main"
+    volumes:
+      - bot_data:/app/data
+    restart: unless-stopped
+
+  miniapp:
+    build: .
+    container_name: crypbot-miniapp
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./data/bot.db
+    command: sh -c "uvicorn src.miniapp.app:app --host 0.0.0.0 --port 8080"
+    volumes:
+      - bot_data:/app/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  bot_data:

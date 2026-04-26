@@ -115,3 +115,25 @@ BOT_PROXY=socks5://user:pass@host:port
 ```env
 BOT_PROXY=http://user:pass@host:port
 ```
+
+## Docker
+
+1. —копировать `.env.example` в `.env` и заполнить переменные.
+2. —обрать и запустить бот + mini app:
+```bash
+docker compose up --build -d
+```
+3. ѕроверить логи:
+```bash
+docker compose logs -f bot
+docker compose logs -f miniapp
+```
+4. ќстановить сервисы:
+```bash
+docker compose down
+```
+
+ѕолезно:
+- mini app будет доступен на `http://127.0.0.1:8080`;
+- база SQLite хранитс€ в docker volume `bot_data` и не тер€етс€ после перезапуска контейнеров;
+- на старте `bot` автоматически выполн€ет `alembic upgrade head`.
