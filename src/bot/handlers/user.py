@@ -1,6 +1,8 @@
 import re
+import logging
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -21,10 +23,17 @@ from src.services.rates import RateServiceError, available_directions, calc_rece
 router = Router()
 settings = get_settings()
 CANCEL_TEXT = "Отмена"
+logger = logging.getLogger(__name__)
 
 
-def _menu():
-    return main_menu_keyboard(settings.bot_mini_app_url)
+def _is_operator_user(message: Message) -> bool:
+    if message.from_user is None:
+        return False
+    return message.from_user.id in settings.operator_ids
+
+
+def _menu(message: Message):
+    return main_menu_keyboard(settings.bot_mini_app_url, is_operator=_is_operator_user(message))
 
 
 def _directions_text() -> str:
@@ -72,14 +81,14 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         "Операционный бот обменника запущен.\nВыберите действие в меню.",
-        reply_markup=_menu(),
+        reply_markup=_menu(message),
     )
 
 
 @router.message(StateFilter("*"), F.text == CANCEL_TEXT)
 async def cancel_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Действие отменено.", reply_markup=_menu())
+    await message.answer("Действие отменено.", reply_markup=_menu(message))
 
 
 @router.message(Command("myid"))
@@ -100,6 +109,7 @@ async def show_rate(message: Message) -> None:
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
 
+    show_margin = _is_operator_user(message)
     blocks: list[str] = []
     for direction in available_directions():
         try:
@@ -107,20 +117,22 @@ async def show_rate(message: Message) -> None:
         except RateServiceError:
             await message.answer(
                 "Сервис курсов временно недоступен. Попробуйте еще раз через пару секунд.",
-                reply_markup=_menu(),
+                reply_markup=_menu(message),
             )
             return
+        base_line = f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n" if show_margin else ""
+        margin_line = f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n" if show_margin else ""
         blocks.append(
             (
                 f"<b>{_format_direction(direction)}</b>\n"
-                f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n"
-                f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n"
+                f"{base_line}"
+                f"{margin_line}"
                 f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
             )
         )
 
     text = "<b>Актуальные курсы</b>\n\n" + "\n\n".join(blocks)
-    await message.answer(text, reply_markup=_menu())
+    await message.answer(text, reply_markup=_menu(message))
 
 
 @router.message(F.text == "Рассчитать")
@@ -143,7 +155,7 @@ async def calc_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CalcFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=_menu())
+    await message.answer("Введите сумму отправки.", reply_markup=_menu(message))
 
 
 @router.message(CalcFlow.waiting_amount)
@@ -160,7 +172,7 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
             margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
         quote = await get_quote(direction, margin_percent, settings)
     except RateServiceError:
-        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
         return
     amount_receive = calc_receive(amount, quote.final_rate)
     await state.clear()
@@ -172,7 +184,7 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
             f"Итоговый курс: {quote.final_rate:.6f}\n"
             f"К получению: {amount_receive}"
         ),
-        reply_markup=_menu(),
+        reply_markup=_menu(message),
     )
 
 
@@ -196,7 +208,7 @@ async def request_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Введите сумму отправки.", reply_markup=_menu())
+    await message.answer("Введите сумму отправки.", reply_markup=_menu(message))
 
 
 @router.message(CreateRequestFlow.waiting_amount)
@@ -249,7 +261,7 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         await state.clear()
         await message.answer(
             "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
-            reply_markup=_menu(),
+            reply_markup=_menu(message),
         )
         return
 
@@ -259,7 +271,7 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
             margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
         quote = await get_quote(direction, margin_percent, settings)
     except RateServiceError:
-        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu())
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
         return
     amount_receive = calc_receive(amount_send, quote.final_rate)
 
@@ -289,27 +301,30 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         )
         await session.commit()
 
-    await message.bot.send_message(
-        chat_id=settings.bot_operator_chat_id,
-        text=(
-            f"Новая заявка #{request.id}\n"
-            f"user_id={message.from_user.id}\n"
-            f"username={('@' + message.from_user.username) if message.from_user.username else '-'}\n"
-            f"Направление: {direction}\n"
-            f"Отправка: {amount_send}\n"
-            f"Получение: {amount_receive}\n"
-            f"Курс: {quote.final_rate:.6f}\n"
-            f"ФИО: {request_full_name}\n"
-            f"Телефон: {request_phone}\n"
-            f"Реквизиты: {requisites}"
-        ),
-    )
+    try:
+        await message.bot.send_message(
+            chat_id=settings.bot_operator_chat_id,
+            text=(
+                f"Новая заявка #{request.id}\n"
+                f"user_id={message.from_user.id}\n"
+                f"username={('@' + message.from_user.username) if message.from_user.username else '-'}\n"
+                f"Направление: {direction}\n"
+                f"Отправка: {amount_send}\n"
+                f"Получение: {amount_receive}\n"
+                f"Курс: {quote.final_rate:.6f}\n"
+                f"ФИО: {request_full_name}\n"
+                f"Телефон: {request_phone}\n"
+                f"Реквизиты: {requisites}"
+            ),
+        )
+    except (TelegramBadRequest, TelegramForbiddenError) as exc:
+        logger.error("Failed to deliver request #%s to operator chat: %s", request.id, exc)
     await state.clear()
     operator_username = _operator_username_for_user()
     operator_line = f"\nОператор: {operator_username}" if operator_username else ""
     await message.answer(
         f"Заявка #{request.id} принята.{operator_line}\nМы уведомим вас при смене статуса.",
-        reply_markup=_menu(),
+        reply_markup=_menu(message),
     )
 
 
@@ -326,7 +341,7 @@ async def show_history(message: Message) -> None:
         await session.commit()
 
     if not rows:
-        await message.answer("История пуста. У вас пока нет заявок.", reply_markup=_menu())
+        await message.answer("История пуста. У вас пока нет заявок.", reply_markup=_menu(message))
         return
 
     lines = ["Последние заявки:"]
@@ -334,12 +349,12 @@ async def show_history(message: Message) -> None:
         lines.append(
             f"#{row.id} {row.direction} | send={row.amount_send} receive={row.amount_receive} | {row.status.value}"
         )
-    await message.answer("\n".join(lines), reply_markup=_menu())
+    await message.answer("\n".join(lines), reply_markup=_menu(message))
 
 
 @router.message(F.text == "Оферта")
 async def show_offer(message: Message) -> None:
-    await message.answer(f"Публичная оферта: {settings.bot_offer_url}", reply_markup=_menu())
+    await message.answer(f"Публичная оферта: {settings.bot_offer_url}", reply_markup=_menu(message))
 
 
 @router.message(F.text == "AML проверка")
@@ -377,18 +392,21 @@ async def aml_set_value(message: Message, state: FSMContext) -> None:
         )
         await session.commit()
 
-    await message.bot.send_message(
-        chat_id=settings.bot_operator_chat_id,
-        text=(
-            f"AML запрос #{aml.id}\n"
-            f"user_id={message.from_user.id}\n"
-            f"type={check_type}\n"
-            f"value={value}\n"
-            f"Для обновления: /aml_status {aml.id} low|medium|high|rejected [comment]"
-        ),
-    )
+    try:
+        await message.bot.send_message(
+            chat_id=settings.bot_operator_chat_id,
+            text=(
+                f"AML запрос #{aml.id}\n"
+                f"user_id={message.from_user.id}\n"
+                f"type={check_type}\n"
+                f"value={value}\n"
+                f"Для обновления: /aml_status {aml.id} low|medium|high|rejected [comment]"
+            ),
+        )
+    except (TelegramBadRequest, TelegramForbiddenError) as exc:
+        logger.error("Failed to deliver AML request #%s to operator chat: %s", aml.id, exc)
     await state.clear()
     await message.answer(
         f"AML-запрос #{aml.id} принят. Результат сообщим отдельно.",
-        reply_markup=_menu(),
+        reply_markup=_menu(message),
     )
