@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base
@@ -51,11 +52,11 @@ class ExchangeRequest(Base):
     source: Mapped[str] = mapped_column(String(32), default="telegram")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     direction: Mapped[str] = mapped_column(String(64), nullable=False)
-    amount_send: Mapped[float] = mapped_column(Float, nullable=False)
-    amount_receive: Mapped[float] = mapped_column(Float, nullable=False)
-    base_rate: Mapped[float] = mapped_column(Float, nullable=False)
-    margin_percent: Mapped[float] = mapped_column(Float, nullable=False)
-    final_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    amount_send: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
+    amount_receive: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
+    base_rate: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
+    margin_percent: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    final_rate: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
     user_requisites: Mapped[str | None] = mapped_column(Text, nullable=True)
     exchange_requisites: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[RequestStatus] = mapped_column(

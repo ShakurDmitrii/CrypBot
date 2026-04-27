@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +22,10 @@ async def get_or_create_user(
     stmt: Select[tuple[User]] = select(User).where(User.telegram_id == telegram_id)
     user = await session.scalar(stmt)
     if user:
-        user.username = username
-        user.full_name = full_name
+        if username is not None:
+            user.username = username
+        if full_name is not None:
+            user.full_name = full_name
         await session.flush()
         return user
 
@@ -43,15 +47,21 @@ async def create_exchange_request(
     user_requisites: str,
     source: str = "telegram",
 ) -> ExchangeRequest:
+    amount_send_dec = Decimal(str(amount_send))
+    amount_receive_dec = Decimal(str(amount_receive))
+    base_rate_dec = Decimal(str(base_rate))
+    margin_percent_dec = Decimal(str(margin_percent))
+    final_rate_dec = Decimal(str(final_rate))
+
     request = ExchangeRequest(
         source=source,
         user_id=user_id,
         direction=direction,
-        amount_send=amount_send,
-        amount_receive=amount_receive,
-        base_rate=base_rate,
-        margin_percent=margin_percent,
-        final_rate=final_rate,
+        amount_send=amount_send_dec,
+        amount_receive=amount_receive_dec,
+        base_rate=base_rate_dec,
+        margin_percent=margin_percent_dec,
+        final_rate=final_rate_dec,
         user_requisites=user_requisites,
         status=RequestStatus.NEW,
     )

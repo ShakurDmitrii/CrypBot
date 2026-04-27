@@ -277,6 +277,10 @@
         line-height: 1.5;
       }
 
+      .hidden {
+        display: none !important;
+      }
+
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -326,6 +330,7 @@
         <div class="menu">
           <button class="action" id="amlBtn" type="button">AML проверка</button>
           <button class="action" id="exchangeBtn" type="button">Биржа Rapira</button>
+          <button class="action hidden" id="operatorWindowBtn" type="button">Окно оператора</button>
         </div>
       </section>
 
@@ -409,6 +414,7 @@
       const amountLabel = document.getElementById("amountLabel");
       const rateResult = document.getElementById("rateResult");
       const historyList = document.getElementById("historyList");
+      const operatorWindowBtn = document.getElementById("operatorWindowBtn");
 
       function openView(viewId) {
         views.forEach((view) => view.classList.remove("active"));
@@ -447,6 +453,25 @@
         }
         state.telegramId = parsed;
         return state.telegramId;
+      }
+
+      async function initOperatorWindowButton() {
+        if (!state.telegramId || !operatorWindowBtn) {
+          return;
+        }
+        try {
+          const me = await api(`/api/me/${state.telegramId}`);
+          if (!me.is_operator) {
+            return;
+          }
+          operatorWindowBtn.classList.remove("hidden");
+          operatorWindowBtn.addEventListener("click", () => {
+            const url = `/admin?telegram_id=${state.telegramId}`;
+            window.location.href = url;
+          });
+        } catch (_) {
+          // ignore optional operator button errors on main page
+        }
       }
 
       async function api(path, options = {}) {
@@ -657,6 +682,7 @@
       });
 
       bindNavigation();
+      initOperatorWindowButton();
       loadDirections()
         .then(() => Promise.all([loadRateBlock(), loadHistory()]))
         .catch((e) => {

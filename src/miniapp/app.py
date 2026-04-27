@@ -5,10 +5,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 
 from src.config import get_settings
-from src.db.init_db import create_tables
-from src.db.session import SessionLocal, engine
+from src.db.models import ExchangeRequest, RequestStatusHistory, User
+from src.db.session import SessionLocal
 from src.services.app_settings import get_margin_percent
 from src.services.exchange_requests import (
     create_exchange_request,
@@ -44,9 +45,13 @@ def _validate_direction(direction: str) -> None:
         raise HTTPException(status_code=400, detail="Unsupported direction")
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    await create_tables(engine)
+def _is_operator(telegram_id: int) -> bool:
+    return telegram_id in settings.operator_ids
+
+
+def _require_operator(telegram_id: int) -> None:
+    if not _is_operator(telegram_id):
+        raise HTTPException(status_code=403, detail="Operator access required")
 
 
 @app.get("/")
@@ -54,9 +59,19 @@ async def miniapp_index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/admin")
+async def miniapp_admin() -> FileResponse:
+    return FileResponse(STATIC_DIR / "admin.html")
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/me/{telegram_id}")
+async def me(telegram_id: int) -> dict[str, int | bool]:
+    return {"telegram_id": telegram_id, "is_operator": _is_operator(telegram_id)}
 
 
 @app.get("/api/offer")
@@ -129,8 +144,8 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
     return {
         "id": request.id,
         "direction": request.direction,
-        "amount_send": request.amount_send,
-        "amount_receive": request.amount_receive,
+        "amount_send": float(request.amount_send),
+        "amount_receive": float(request.amount_receive),
         "status": request.status.value,
     }
 
@@ -152,12 +167,118 @@ async def user_requests(telegram_id: int) -> dict[str, list[dict[str, int | str 
             {
                 "id": row.id,
                 "direction": row.direction,
-                "amount_send": row.amount_send,
-                "amount_receive": row.amount_receive,
+                "amount_send": float(row.amount_send),
+                "amount_receive": float(row.amount_receive),
                 "status": row.status.value,
                 "created_at": row.created_at.isoformat() if row.created_at else "",
             }
             for row in rows
+        ]
+    }
+
+
+@app.get("/api/admin/users/{telegram_id}")
+async def admin_users(telegram_id: int, limit: int = 100) -> dict[str, list[dict[str, int | str | None]]]:
+    _require_operator(telegram_id)
+    safe_limit = max(1, min(limit, 300))
+    async with SessionLocal() as session:
+        rows = await session.execute(
+            select(
+                User.id,
+                User.telegram_id,
+                User.username,
+                User.full_name,
+                User.created_at,
+                func.count(ExchangeRequest.id).label("requests_count"),
+            )
+            .outerjoin(ExchangeRequest, ExchangeRequest.user_id == User.id)
+            .group_by(User.id)
+            .order_by(User.created_at.desc())
+            .limit(safe_limit)
+        )
+        items = rows.all()
+
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "telegram_id": row.telegram_id,
+                "username": row.username,
+                "full_name": row.full_name,
+                "requests_count": int(row.requests_count or 0),
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in items
+        ]
+    }
+
+
+@app.get("/api/admin/requests/{telegram_id}")
+async def admin_requests(
+    telegram_id: int, limit: int = 100
+) -> dict[str, list[dict[str, int | float | str | None]]]:
+    _require_operator(telegram_id)
+    safe_limit = max(1, min(limit, 300))
+    async with SessionLocal() as session:
+        rows = await session.execute(
+            select(ExchangeRequest, User)
+            .join(User, ExchangeRequest.user_id == User.id, isouter=True)
+            .order_by(ExchangeRequest.created_at.desc())
+            .limit(safe_limit)
+        )
+        items = rows.all()
+
+    return {
+        "items": [
+            {
+                "id": request.id,
+                "telegram_id": user.telegram_id if user else None,
+                "username": user.username if user else None,
+                "full_name": user.full_name if user else None,
+                "direction": request.direction,
+                "amount_send": float(request.amount_send),
+                "amount_receive": float(request.amount_receive),
+                "final_rate": float(request.final_rate),
+                "status": request.status.value,
+                "status_comment": request.status_comment,
+                "created_at": request.created_at.isoformat() if request.created_at else None,
+                "updated_at": request.updated_at.isoformat() if request.updated_at else None,
+            }
+            for request, user in items
+        ]
+    }
+
+
+@app.get("/api/admin/request-history/{telegram_id}")
+async def admin_request_history(
+    telegram_id: int, limit: int = 200
+) -> dict[str, list[dict[str, int | str | None]]]:
+    _require_operator(telegram_id)
+    safe_limit = max(1, min(limit, 500))
+    async with SessionLocal() as session:
+        rows = await session.execute(
+            select(RequestStatusHistory, ExchangeRequest, User)
+            .join(ExchangeRequest, RequestStatusHistory.request_id == ExchangeRequest.id)
+            .join(User, ExchangeRequest.user_id == User.id, isouter=True)
+            .order_by(RequestStatusHistory.created_at.desc())
+            .limit(safe_limit)
+        )
+        items = rows.all()
+
+    return {
+        "items": [
+            {
+                "history_id": history.id,
+                "request_id": history.request_id,
+                "status": history.status.value,
+                "comment": history.comment,
+                "changed_by": history.changed_by,
+                "created_at": history.created_at.isoformat() if history.created_at else None,
+                "direction": request.direction,
+                "telegram_id": user.telegram_id if user else None,
+                "username": user.username if user else None,
+            }
+            for history, request, user in items
         ]
     }
 

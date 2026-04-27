@@ -18,13 +18,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "app_settings",
-        sa.Column("key", sa.String(length=128), primary_key=True),
-        sa.Column("value", sa.Text(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("app_settings"):
+        op.create_table(
+            "app_settings",
+            sa.Column("key", sa.String(length=128), primary_key=True),
+            sa.Column("value", sa.Text(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        )
 
 
 def downgrade() -> None:
-    op.drop_table("app_settings")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_table("app_settings"):
+        op.drop_table("app_settings")

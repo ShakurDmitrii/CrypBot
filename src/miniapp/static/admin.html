@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>НЕБО • Окно оператора</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        --bg: #071a22;
+        --panel: #0d2733;
+        --line: #1e4658;
+        --text: #eaf8f7;
+        --soft: #9ec1c8;
+        --accent: #2ec9b8;
+        --warn: #ff9f9f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+        background: linear-gradient(160deg, #0d2b38, var(--bg));
+        color: var(--text);
+      }
+
+      .app {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 12px;
+      }
+
+      .header {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: var(--panel);
+      }
+
+      .title {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .meta {
+        margin-top: 6px;
+        color: var(--soft);
+        font-size: 13px;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+
+      .btn {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #103341;
+        color: var(--text);
+        padding: 9px 12px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        background: linear-gradient(160deg, #1ba595, #1a7cab);
+      }
+
+      .panel {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(7, 25, 33, 0.95);
+        padding: 12px;
+      }
+
+      .status {
+        color: var(--soft);
+        font-size: 14px;
+      }
+
+      .status.err {
+        color: var(--warn);
+      }
+
+      .table-wrap {
+        overflow: auto;
+        margin-top: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 860px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        text-align: left;
+        font-size: 13px;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--soft);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="header">
+        <h1 class="title">Окно оператора</h1>
+        <div class="meta" id="meta">Проверка доступа...</div>
+        <div class="toolbar">
+          <button class="btn primary" id="loadUsersBtn" type="button">Пользователи</button>
+          <button class="btn primary" id="loadRequestsBtn" type="button">Заявки</button>
+          <button class="btn primary" id="loadHistoryBtn" type="button">История статусов</button>
+          <button class="btn" id="backBtn" type="button">На главную миниаппу</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="status" id="status">Ожидание...</div>
+        <div class="table-wrap" id="tableWrap"></div>
+      </section>
+    </main>
+
+    <script>
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+
+      function parseTelegramIdFromQuery() {
+        const p = new URLSearchParams(window.location.search);
+        const raw = p.get("telegram_id");
+        if (!raw) {
+          return null;
+        }
+        const id = Number(raw);
+        if (!Number.isInteger(id) || id <= 0) {
+          return null;
+        }
+        return id;
+      }
+
+      function getTelegramId() {
+        const fromTg = tg?.initDataUnsafe?.user?.id ?? null;
+        if (fromTg) {
+          return fromTg;
+        }
+        const fromQuery = parseTelegramIdFromQuery();
+        if (fromQuery) {
+          return fromQuery;
+        }
+        const raw = prompt("Введите Telegram ID оператора");
+        if (!raw) {
+          return null;
+        }
+        const id = Number(raw);
+        if (!Number.isInteger(id) || id <= 0) {
+          return null;
+        }
+        return id;
+      }
+
+      const state = {
+        telegramId: getTelegramId(),
+        accessGranted: false,
+      };
+
+      const metaEl = document.getElementById("meta");
+      const statusEl = document.getElementById("status");
+      const tableWrap = document.getElementById("tableWrap");
+
+      function setStatus(text, isError = false) {
+        statusEl.textContent = text;
+        statusEl.className = `status${isError ? " err" : ""}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      async function api(path) {
+        const r = await fetch(path);
+        if (!r.ok) {
+          throw new Error(await r.text());
+        }
+        return r.json();
+      }
+
+      async function checkAccess() {
+        if (!state.telegramId) {
+          metaEl.textContent = "Не удалось определить Telegram ID.";
+          setStatus("Доступ не предоставлен.", true);
+          return;
+        }
+        try {
+          const data = await api(`/api/me/${state.telegramId}`);
+          if (!data.is_operator) {
+            metaEl.textContent = `Telegram ID: ${state.telegramId}`;
+            setStatus("Доступ запрещен: вы не оператор.", true);
+            return;
+          }
+          state.accessGranted = true;
+          metaEl.textContent = `Telegram ID: ${state.telegramId} • Роль: оператор`;
+          setStatus("Доступ подтвержден.");
+        } catch (e) {
+          setStatus(`Ошибка проверки доступа: ${e.message}`, true);
+        }
+      }
+
+      function renderTable(headers, rows) {
+        if (!rows.length) {
+          tableWrap.innerHTML = "<div class='status'>Нет данных.</div>";
+          return;
+        }
+        const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+        const tbody = `<tbody>${rows
+          .map((row) => `<tr>${row.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`)
+          .join("")}</tbody>`;
+        tableWrap.innerHTML = `<table>${thead}${tbody}</table>`;
+      }
+
+      async function loadUsers() {
+        if (!state.accessGranted) {
+          return;
+        }
+        setStatus("Загрузка пользователей...");
+        const data = await api(`/api/admin/users/${state.telegramId}`);
+        const rows = (data.items || []).map((u) => [
+          u.id,
+          u.telegram_id,
+          u.username || "-",
+          u.full_name || "-",
+          u.requests_count,
+          u.created_at || "-",
+        ]);
+        renderTable(["ID", "Telegram ID", "Username", "ФИО", "Заявок", "Создан"], rows);
+        setStatus(`Пользователей: ${rows.length}`);
+      }
+
+      async function loadRequests() {
+        if (!state.accessGranted) {
+          return;
+        }
+        setStatus("Загрузка заявок...");
+        const data = await api(`/api/admin/requests/${state.telegramId}`);
+        const rows = (data.items || []).map((r) => [
+          r.id,
+          r.telegram_id || "-",
+          r.username || "-",
+          r.direction,
+          r.amount_send,
+          r.amount_receive,
+          r.status,
+          r.created_at || "-",
+        ]);
+        renderTable(
+          ["ID", "Telegram ID", "Username", "Направление", "Отправка", "Получение", "Статус", "Создана"],
+          rows
+        );
+        setStatus(`Заявок: ${rows.length}`);
+      }
+
+      async function loadHistory() {
+        if (!state.accessGranted) {
+          return;
+        }
+        setStatus("Загрузка истории статусов...");
+        const data = await api(`/api/admin/request-history/${state.telegramId}`);
+        const rows = (data.items || []).map((h) => [
+          h.history_id,
+          h.request_id,
+          h.status,
+          h.comment || "-",
+          h.changed_by || "-",
+          h.direction || "-",
+          h.telegram_id || "-",
+          h.created_at || "-",
+        ]);
+        renderTable(
+          ["History ID", "Request ID", "Статус", "Комментарий", "Кем", "Направление", "Telegram ID", "Когда"],
+          rows
+        );
+        setStatus(`Событий истории: ${rows.length}`);
+      }
+
+      document.getElementById("loadUsersBtn").addEventListener("click", () => {
+        loadUsers().catch((e) => setStatus(`Ошибка загрузки пользователей: ${e.message}`, true));
+      });
+      document.getElementById("loadRequestsBtn").addEventListener("click", () => {
+        loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
+      });
+      document.getElementById("loadHistoryBtn").addEventListener("click", () => {
+        loadHistory().catch((e) => setStatus(`Ошибка загрузки истории: ${e.message}`, true));
+      });
+      document.getElementById("backBtn").addEventListener("click", () => {
+        window.location.href = "/";
+      });
+
+      checkAccess().then(() => {
+        if (state.accessGranted) {
+          loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
+        }
+      });
+    </script>
+  </body>
+</html>

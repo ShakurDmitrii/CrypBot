@@ -10,15 +10,11 @@ from aiogram.exceptions import TelegramNetworkError
 
 from src.bot.router import build_router
 from src.config import get_settings
-from src.db.init_db import create_tables
-from src.db.session import engine
 
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     settings = get_settings()
-
-    await create_tables(engine)
 
     # Force IPv4 on this host to avoid intermittent WinError 121 with aiohttp happy-eyeballs.
     session = AiohttpSession(proxy=settings.bot_proxy or None)
