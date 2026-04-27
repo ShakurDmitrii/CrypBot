@@ -39,6 +39,16 @@ class Settings(BaseSettings):
             raise ValueError("BOT_MARGIN_PERCENT must be >= 0")
         return value
 
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        raw = value.strip()
+        if raw.startswith("postgres://"):
+            return raw.replace("postgres://", "postgresql+asyncpg://", 1)
+        if raw.startswith("postgresql://"):
+            return raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return raw
+
     @property
     def operator_ids(self) -> list[int]:
         if not self.bot_operator_ids.strip():

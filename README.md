@@ -137,3 +137,22 @@ docker compose down
 - mini app будет доступен на `http://127.0.0.1:8080`;
 - база SQLite хранитс€ в docker volume `bot_data` и не тер€етс€ после перезапуска контейнеров;
 - на старте `bot` автоматически выполн€ет `alembic upgrade head`.
+
+## ѕосто€нный деплой (Render)
+
+¬ проекте есть `render.yaml` дл€ one-click депло€: `miniapp` (web), `bot` (worker) и PostgreSQL.
+
+1. «арегистрироватьс€ на Render и подключить GitHub-репозиторий.
+2. —оздать сервис из Blueprint (`render.yaml`).
+3. «аполнить секреты в Render дл€ обоих сервисов:
+   - `BOT_TOKEN`
+   - `BOT_OPERATOR_CHAT_ID`
+   - `BOT_OPERATOR_IDS`
+   - `BOT_OPERATOR_USERNAME` (опционально)
+   - `BOT_OFFER_URL`
+4. ѕосле первого депло€ открыть URL сервиса `nebo-miniapp` (вида `https://...onrender.com`) и поставить это значение в `BOT_MINI_APP_URL` у сервиса `nebo-bot`.
+5. ѕерезапустить сервис `nebo-bot`, затем в Telegram отправить `/start`.
+
+¬ажно:
+- `DATABASE_URL` беретс€ из managed PostgreSQL автоматически;
+- в коде есть автонормализаци€ `postgres://` -> `postgresql+asyncpg://`, поэтому подключение на Render работает без ручной правки URL.

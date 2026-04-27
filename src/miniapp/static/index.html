@@ -7,19 +7,20 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
-        --bg-1: #051319;
-        --bg-2: #0b2430;
-        --bg-3: #163948;
-        --card: rgba(5, 23, 31, 0.64);
-        --card-strong: rgba(4, 18, 25, 0.88);
-        --line: rgba(58, 229, 201, 0.35);
-        --line-soft: rgba(58, 229, 201, 0.2);
-        --text: #eaf8f7;
-        --text-soft: #b8d2d1;
-        --accent: #3ae5c9;
-        --accent-2: #4cc3ff;
-        --danger: #ff8a8a;
-        --ok: #8bffd7;
+        --sky-1: #071624;
+        --sky-2: #10314c;
+        --sky-3: #1b4f7d;
+        --sky-4: #2f83bd;
+        --surface: rgba(8, 25, 40, 0.72);
+        --surface-strong: rgba(8, 27, 44, 0.92);
+        --line: rgba(123, 215, 255, 0.42);
+        --line-soft: rgba(123, 215, 255, 0.22);
+        --text: #ecf9ff;
+        --muted: #b8deef;
+        --accent: #69d1ff;
+        --accent-2: #5aa8ff;
+        --ok: #95ffd9;
+        --danger: #ffa0a0;
       }
 
       * {
@@ -32,114 +33,81 @@
         font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
         color: var(--text);
         background:
-          radial-gradient(80% 40% at 12% 0%, rgba(76, 195, 255, 0.3), transparent 60%),
-          radial-gradient(55% 55% at 88% 20%, rgba(58, 229, 201, 0.16), transparent 65%),
-          linear-gradient(160deg, var(--bg-2), var(--bg-1) 42%, var(--bg-3));
+          radial-gradient(80% 42% at 14% 0%, rgba(90, 168, 255, 0.34), transparent 62%),
+          radial-gradient(65% 60% at 86% 18%, rgba(105, 209, 255, 0.2), transparent 66%),
+          linear-gradient(162deg, var(--sky-2), var(--sky-1) 45%, var(--sky-3));
       }
 
-      .bg-lines::before,
-      .bg-lines::after {
+      .overlay::before {
         content: "";
         position: fixed;
         inset: 0;
         pointer-events: none;
-      }
-
-      .bg-lines::before {
         background:
-          linear-gradient(120deg, transparent 10%, rgba(255, 255, 255, 0.04) 36%, transparent 52%),
-          linear-gradient(121deg, transparent 18%, rgba(255, 255, 255, 0.03) 48%, transparent 76%);
-      }
-
-      .bg-lines::after {
-        background:
-          radial-gradient(1px 1px at 24% 10%, rgba(255, 255, 255, 0.26), transparent),
-          radial-gradient(1px 1px at 80% 16%, rgba(255, 255, 255, 0.2), transparent),
-          radial-gradient(1px 1px at 70% 74%, rgba(255, 255, 255, 0.2), transparent),
-          radial-gradient(1px 1px at 8% 62%, rgba(255, 255, 255, 0.2), transparent);
+          linear-gradient(124deg, transparent 13%, rgba(255, 255, 255, 0.055) 40%, transparent 58%),
+          linear-gradient(123deg, transparent 21%, rgba(255, 255, 255, 0.03) 55%, transparent 74%);
+        opacity: 0.7;
       }
 
       .app {
         max-width: 860px;
         margin: 0 auto;
-        padding: 14px 12px 26px;
+        padding: 14px 12px 92px;
         position: relative;
         z-index: 2;
       }
 
-      .hero {
+      .brand-wrap {
         border: 1px solid var(--line-soft);
         border-radius: 20px;
-        padding: 18px 16px;
-        background: linear-gradient(150deg, rgba(7, 31, 42, 0.9), rgba(8, 23, 31, 0.74));
-        box-shadow: 0 10px 34px rgba(0, 0, 0, 0.34);
+        background: linear-gradient(145deg, rgba(7, 28, 45, 0.95), rgba(8, 25, 40, 0.86));
+        padding: 18px 14px;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
       }
 
       .brand {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .brand-title {
         margin: 0;
-        font-size: 44px;
+        font-size: 46px;
         letter-spacing: 0.08em;
+        text-align: center;
         line-height: 1;
         font-weight: 800;
       }
 
       .brand-sub {
-        margin: 6px 0 0;
-        color: var(--text-soft);
+        margin: 8px 0 0;
+        text-align: center;
+        color: var(--muted);
+        letter-spacing: 0.1em;
         font-size: 13px;
-        letter-spacing: 0.08em;
         text-transform: uppercase;
-      }
-
-      .live-dot {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--text-soft);
-      }
-
-      .live-dot i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--accent);
-        box-shadow: 0 0 12px rgba(58, 229, 201, 0.8);
       }
 
       .menu {
         display: grid;
         gap: 10px;
-        margin-top: 12px;
+        margin-top: 14px;
       }
 
       .menu.two {
         grid-template-columns: 1fr 1fr;
       }
 
-      .action {
+      .menu-btn {
         border: 1px solid var(--line);
         border-radius: 14px;
-        padding: 14px 12px;
-        background: var(--card);
+        background: var(--surface);
         color: var(--text);
+        min-height: 52px;
+        padding: 11px 12px;
         font: inherit;
-        font-size: 18px;
+        font-size: 20px;
         cursor: pointer;
-        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
       }
 
-      .action:hover {
-        transform: translateY(-1px);
-        border-color: rgba(76, 195, 255, 0.55);
-        background: rgba(13, 39, 51, 0.88);
+      .menu-btn:hover {
+        border-color: rgba(147, 223, 255, 0.7);
+        background: rgba(15, 43, 68, 0.88);
       }
 
       .view {
@@ -147,34 +115,64 @@
         margin-top: 14px;
         border: 1px solid var(--line-soft);
         border-radius: 18px;
-        background: var(--card-strong);
         padding: 14px;
+        background: var(--surface-strong);
       }
 
       .view.active {
         display: block;
-        animation: fadeIn 0.24s ease;
+        animation: fadeIn 0.18s ease;
       }
 
-      .view-title {
-        margin: 0 0 12px;
-        font-size: 27px;
-        letter-spacing: 0.01em;
+      .title {
+        margin: 0 0 8px;
+        font-size: 26px;
       }
 
-      .muted {
-        color: var(--text-soft);
-        line-height: 1.5;
+      .hint {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
       }
 
-      .field {
-        margin-bottom: 12px;
+      .hint.multiline {
+        white-space: pre-line;
+      }
+
+      .panel {
+        margin-top: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(9, 31, 50, 0.88);
+      }
+
+      .segment {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .segment button {
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: rgba(6, 22, 36, 0.9);
+        color: var(--text);
+        padding: 10px 8px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .segment button.active {
+        border-color: rgba(123, 215, 255, 0.92);
+        box-shadow: inset 0 0 0 1px rgba(123, 215, 255, 0.3);
+        background: rgba(14, 45, 71, 0.95);
       }
 
       .label {
         display: block;
-        margin-bottom: 6px;
-        color: var(--text-soft);
+        margin: 12px 0 6px;
+        color: var(--muted);
         font-size: 13px;
       }
 
@@ -185,73 +183,89 @@
         padding: 12px;
         font: inherit;
         color: var(--text);
-        background: rgba(3, 16, 24, 0.85);
+        background: rgba(4, 16, 28, 0.88);
       }
 
-      .input::placeholder {
-        color: rgba(193, 223, 223, 0.54);
+      .input[readonly] {
+        opacity: 0.9;
       }
 
-      .row {
-        display: grid;
-        gap: 10px;
-        grid-template-columns: 1fr 1fr;
+      .input:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
       }
 
-      .direction {
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .chip {
         border: 1px solid var(--line-soft);
-        border-radius: 12px;
-        background: rgba(8, 27, 37, 0.85);
-        padding: 11px;
+        border-radius: 999px;
+        background: rgba(10, 36, 56, 0.85);
         color: var(--text);
+        padding: 6px 10px;
         font: inherit;
+        font-size: 12px;
         cursor: pointer;
       }
 
-      .direction.active {
-        border-color: rgba(76, 195, 255, 0.82);
-        box-shadow: inset 0 0 0 1px rgba(76, 195, 255, 0.38);
-        background: rgba(13, 40, 54, 0.93);
+      .kpi-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
       }
 
-      .result {
+      .kpi {
         border: 1px solid var(--line-soft);
         border-radius: 12px;
-        padding: 12px;
-        margin-top: 12px;
-        background: rgba(8, 23, 30, 0.9);
-        white-space: pre-line;
+        background: rgba(8, 25, 38, 0.9);
+        padding: 10px;
+      }
+
+      .kpi .k {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .kpi .v {
+        margin-top: 4px;
+        font-weight: 700;
+        font-size: 15px;
       }
 
       .buttons {
         display: flex;
-        gap: 10px;
         flex-wrap: wrap;
-        margin-top: 6px;
+        gap: 10px;
+        margin-top: 12px;
       }
 
       .btn {
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 11px 14px;
-        background: rgba(7, 31, 42, 0.85);
+        background: rgba(11, 39, 60, 0.9);
         color: var(--text);
+        padding: 11px 14px;
         font: inherit;
         cursor: pointer;
       }
 
       .btn.primary {
-        background: linear-gradient(150deg, #1ea59d, #1780bc);
-        border-color: rgba(140, 246, 233, 0.55);
-      }
-
-      .btn.back {
-        margin-top: 14px;
+        border-color: rgba(155, 230, 255, 0.6);
+        background: linear-gradient(145deg, #3ca6dd, #4489e8);
+        font-weight: 700;
       }
 
       .status {
         margin-top: 10px;
+        min-height: 20px;
         font-size: 14px;
+        white-space: pre-line;
       }
 
       .status.ok {
@@ -262,16 +276,6 @@
         color: var(--danger);
       }
 
-      .history-item {
-        border-top: 1px solid var(--line-soft);
-        padding: 10px 0;
-        line-height: 1.45;
-      }
-
-      .history-item:first-child {
-        border-top: 0;
-      }
-
       .about p {
         margin: 0 0 12px;
         line-height: 1.5;
@@ -279,6 +283,74 @@
 
       .hidden {
         display: none !important;
+      }
+
+      .bottom-nav {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        z-index: 20;
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        padding: 6px;
+        background: rgba(6, 20, 31, 0.95);
+        backdrop-filter: blur(8px);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+
+      .bottom-nav.has-admin {
+        grid-template-columns: repeat(5, 1fr);
+      }
+
+      .nav-btn {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--muted);
+        padding: 8px 6px;
+        font: inherit;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+      }
+
+      .nav-btn.active {
+        color: var(--text);
+        border-color: var(--line-soft);
+        background: rgba(19, 57, 86, 0.72);
+      }
+
+      .nav-icon {
+        display: inline-block;
+        transform: translateY(-1px);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 74px;
+        transform: translateX(-50%);
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: rgba(8, 27, 41, 0.95);
+        color: var(--text);
+        padding: 10px 12px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-3px);
       }
 
       @keyframes fadeIn {
@@ -292,100 +364,148 @@
         }
       }
 
-      @media (max-width: 700px) {
-        .brand-title {
-          font-size: 38px;
+      @media (max-width: 720px) {
+        .brand {
+          font-size: 40px;
         }
 
         .menu.two,
-        .row {
+        .kpi-grid {
           grid-template-columns: 1fr;
         }
       }
     </style>
   </head>
   <body>
-    <div class="bg-lines"></div>
+    <div class="overlay"></div>
     <main class="app">
-      <section class="hero">
-        <div class="brand">
-          <div>
-            <h1 class="brand-title">НЕБО</h1>
-            <p class="brand-sub">КРИПТООБМЕННИК • МОСКВА</p>
-          </div>
-          <span class="live-dot"><i></i>online</span>
-        </div>
+      <header class="brand-wrap">
+        <h1 class="brand">НЕБО</h1>
+        <p class="brand-sub">Криптообменник в Москве</p>
+      </header>
 
+      <section id="view-home" class="view active">
         <div class="menu">
-          <button class="action" data-view-target="calcView">Купить / Продать USDT</button>
+          <button class="menu-btn" data-open="exchange">Быстрый обмен USDT</button>
         </div>
-
         <div class="menu two">
-          <button class="action" data-view-target="rateView">Курс</button>
-          <button class="action" data-view-target="historyView">Все заявки</button>
-          <button class="action" id="supportBtn" type="button">Поддержка</button>
-          <button class="action" data-view-target="aboutView">О нас</button>
+          <button class="menu-btn" data-open="rate">Курс</button>
+          <button class="menu-btn" data-open="about">О Небе</button>
         </div>
-
         <div class="menu">
-          <button class="action" id="amlBtn" type="button">AML проверка</button>
-          <button class="action" id="exchangeBtn" type="button">Биржа Rapira</button>
-          <button class="action hidden" id="operatorWindowBtn" type="button">Окно оператора</button>
+          <button class="menu-btn" id="amlBtn" type="button">Проверка AML</button>
+          <button class="menu-btn" id="homeAdminBtn" type="button">Пульт оператора</button>
         </div>
       </section>
 
-      <section id="calcView" class="view">
-        <h2 class="view-title">Калькулятор</h2>
-        <p class="muted">Работает в обе стороны: RUB → USDT и USDT → RUB.</p>
-        <div class="row" id="directions"></div>
-        <div class="field">
-          <label class="label" id="amountLabel" for="amountInput">Сумма отправки</label>
-          <input class="input" id="amountInput" type="number" min="0" step="0.000001" placeholder="Например, 1000" />
+      <section id="view-exchange" class="view">
+        <h2 class="title">Оформление заявки</h2>
+        <p class="hint">Минимум действий: направление, сумма, ФИО, телефон, реквизиты.</p>
+
+        <div class="panel">
+          <div class="segment" id="directionSegment"></div>
+
+          <label class="label" id="sendLabel" for="sendAmount">Вы отправляете</label>
+          <input class="input" id="sendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
+
+          <div class="chips" id="quickChips"></div>
+
+          <label class="label" id="receiveLabel" for="receiveAmount">Вы получаете</label>
+          <input class="input" id="receiveAmount" type="text" readonly />
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="k">Итоговый курс</div>
+              <div class="v" id="finalRateKpi">—</div>
+            </div>
+          </div>
         </div>
-        <div class="field">
-          <label class="label" for="requisitesInput">Реквизиты для получения</label>
-          <input class="input" id="requisitesInput" type="text" maxlength="512" placeholder="Карта, кошелек или банковские реквизиты" />
+
+        <div class="panel">
+          <label class="label" for="fullNameInput">ФИО</label>
+          <input class="input" id="fullNameInput" type="text" maxlength="128" placeholder="Иванов Иван Иванович" />
+
+          <label class="label" for="phoneInput">Телефон</label>
+          <input class="input" id="phoneInput" type="tel" maxlength="25" placeholder="+79991234567" disabled />
+
+          <label class="label" for="requisites">Реквизиты для получения</label>
+          <textarea
+            class="input"
+            id="requisites"
+            rows="3"
+            maxlength="512"
+            placeholder="Карта, номер телефона банка или криптокошелек"
+            disabled
+          ></textarea>
+
+          <div class="buttons">
+            <button class="btn" id="recalcBtn" type="button">Обновить расчет</button>
+            <button class="btn primary" id="createBtn" type="button">Создать заявку</button>
+          </div>
+          <div class="status" id="statusLine"></div>
         </div>
-        <div class="buttons">
-          <button class="btn primary" id="calcBtn" type="button">Рассчитать</button>
-          <button class="btn" id="createBtn" type="button">Создать заявку</button>
-        </div>
-        <div class="result muted" id="calcResult">Выберите направление и введите сумму.</div>
-        <div class="status muted" id="calcStatus"></div>
-        <button class="btn back" data-view-target="" type="button">На главную</button>
       </section>
 
-      <section id="rateView" class="view">
-        <h2 class="view-title">Текущий курс</h2>
-        <div class="result muted" id="rateResult">Нажмите «Обновить курс».</div>
-        <div class="buttons">
-          <button class="btn primary" id="refreshRateBtn" type="button">Обновить курс</button>
+      <section id="view-rate" class="view">
+        <h2 class="title">Курс</h2>
+        <div class="panel">
+          <p class="hint multiline" id="rateInfo">Нажмите «Обновить».</p>
+          <div class="buttons">
+            <button class="btn primary" id="refreshRateBtn" type="button">Обновить</button>
+          </div>
         </div>
-        <button class="btn back" data-view-target="" type="button">На главную</button>
+        <div class="panel">
+          <h3 class="title" style="font-size: 20px; margin-bottom: 4px">Калькулятор</h3>
+          <p class="hint">Быстрый пересчет по текущему курсу.</p>
+          <div class="segment" id="rateCalcDirectionSegment"></div>
+
+          <label class="label" id="rateCalcSendLabel" for="rateCalcSendAmount">Вы отправляете</label>
+          <input class="input" id="rateCalcSendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
+
+          <label class="label" id="rateCalcReceiveLabel" for="rateCalcReceiveAmount">Вы получаете</label>
+          <input class="input" id="rateCalcReceiveAmount" type="text" readonly />
+
+          <div class="buttons">
+            <button class="btn" id="rateCalcRecalcBtn" type="button">Рассчитать</button>
+          </div>
+        </div>
       </section>
 
-      <section id="historyView" class="view">
-        <h2 class="view-title">Все заявки</h2>
-        <div id="historyList" class="muted">Загрузка...</div>
-        <div class="buttons">
-          <button class="btn" id="refreshHistoryBtn" type="button">Обновить</button>
+      <section id="view-about" class="view about">
+        <h2 class="title">О нас</h2>
+        <div class="panel">
+          <p>Занимаемся обменом криптовалют более 3 лет.</p>
+          <p>Работаем 24/7. При первом визите в офис потребуется паспорт.</p>
+          <p>Работаем только за наличные рубли.</p>
+          <p>Мы работаем стол в стол, не храним ваши средства у себя.</p>
+          <p>У нас можно купить USDT без комиссии по одному из лучших курсов в Москве.</p>
+          <p>Наш адрес: г. Москва, Пресненская набережная, 12, Башня Федерация Восток, этаж 11.</p>
+          <p>Для получения пропуска в офис и покупки USDT создайте заявку через бота.</p>
+          <p>Гостевой пропуск: на -1 этаже с 8:00 до 19:00 и на 1 этаже с 19:00 до 8:00.</p>
         </div>
-        <button class="btn back" data-view-target="" type="button">На главную</button>
       </section>
 
-      <section id="aboutView" class="view about">
-        <h2 class="view-title">О нас</h2>
-        <p>Занимаемся обменом криптовалют более 3 лет.</p>
-        <p>Работаем 24/7. При первом визите в офис потребуется паспорт.</p>
-        <p>Работаем только за наличные рубли.</p>
-        <p>Мы работаем стол в стол, не храним ваши средства у себя.</p>
-        <p>У нас можно купить USDT без комиссии по одному из лучших курсов в Москве.</p>
-        <p>Наш адрес: г. Москва, Пресненская набережная, 12, Башня Федерация Восток, этаж 11.</p>
-        <p>Для получения пропуска в офис и покупки USDT, создайте заявку через бота.</p>
-        <p>Гостевой пропуск выдается на ресепшене: на -1 этаже с 8:00 до 19:00 и на 1 этаже с 19:00 до 8:00.</p>
-        <button class="btn back" data-view-target="" type="button">Перейти на главный экран</button>
-      </section>
     </main>
+
+    <nav class="bottom-nav has-admin" id="bottomNav">
+      <button class="nav-btn active" data-view="home" type="button" aria-label="Главная" title="Главная">
+        <span class="nav-icon" aria-hidden="true">⌂</span>
+      </button>
+      <button class="nav-btn" data-view="exchange" type="button" aria-label="Обмен" title="Обмен">
+        <span class="nav-icon" aria-hidden="true">⇄</span>
+      </button>
+      <button class="nav-btn" data-view="rate" type="button" aria-label="Курс" title="Курс">
+        <span class="nav-icon" aria-hidden="true">₽</span>
+      </button>
+      <button class="nav-btn" data-action="support" type="button" aria-label="Поддержка" title="Поддержка">
+        <span class="nav-icon" aria-hidden="true">✉</span>
+      </button>
+      <button class="nav-btn" id="navAdminBtn" type="button" aria-label="Админ" title="Админ">
+        <span class="nav-icon" aria-hidden="true">⚙</span>
+      </button>
+    </nav>
+
+    <div id="toast" class="toast"></div>
 
     <script>
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -394,84 +514,112 @@
         tg.expand();
       }
 
+      const qs = new URLSearchParams(window.location.search);
+      const queryTelegramId = Number(qs.get("telegram_id"));
+      const fallbackTelegramId = Number.isInteger(queryTelegramId) && queryTelegramId > 0 ? queryTelegramId : null;
+
       const state = {
-        telegramId: tg?.initDataUnsafe?.user?.id ?? null,
+        telegramId: tg?.initDataUnsafe?.user?.id ?? fallbackTelegramId,
         username: tg?.initDataUnsafe?.user?.username ?? null,
         fullName:
           [tg?.initDataUnsafe?.user?.first_name, tg?.initDataUnsafe?.user?.last_name]
             .filter(Boolean)
             .join(" ") || null,
         direction: null,
+        rateCalcDirection: null,
         directions: [],
+        calcTimer: null,
+        rateCalcTimer: null,
       };
 
-      const views = [...document.querySelectorAll(".view")];
-      const directionsEl = document.getElementById("directions");
-      const amountInput = document.getElementById("amountInput");
-      const requisitesInput = document.getElementById("requisitesInput");
-      const calcResult = document.getElementById("calcResult");
-      const calcStatus = document.getElementById("calcStatus");
-      const amountLabel = document.getElementById("amountLabel");
-      const rateResult = document.getElementById("rateResult");
-      const historyList = document.getElementById("historyList");
-      const operatorWindowBtn = document.getElementById("operatorWindowBtn");
+      const els = {
+        directionSegment: document.getElementById("directionSegment"),
+        sendAmount: document.getElementById("sendAmount"),
+        receiveAmount: document.getElementById("receiveAmount"),
+        quickChips: document.getElementById("quickChips"),
+        fullNameInput: document.getElementById("fullNameInput"),
+        phoneInput: document.getElementById("phoneInput"),
+        requisites: document.getElementById("requisites"),
+        sendLabel: document.getElementById("sendLabel"),
+        receiveLabel: document.getElementById("receiveLabel"),
+        rateCalcDirectionSegment: document.getElementById("rateCalcDirectionSegment"),
+        rateCalcSendAmount: document.getElementById("rateCalcSendAmount"),
+        rateCalcReceiveAmount: document.getElementById("rateCalcReceiveAmount"),
+        rateCalcSendLabel: document.getElementById("rateCalcSendLabel"),
+        rateCalcReceiveLabel: document.getElementById("rateCalcReceiveLabel"),
+        finalRateKpi: document.getElementById("finalRateKpi"),
+        statusLine: document.getElementById("statusLine"),
+        rateInfo: document.getElementById("rateInfo"),
+        toast: document.getElementById("toast"),
+        homeAdminBtn: document.getElementById("homeAdminBtn"),
+        navAdminBtn: document.getElementById("navAdminBtn"),
+        bottomNav: document.getElementById("bottomNav"),
+      };
 
-      function openView(viewId) {
-        views.forEach((view) => view.classList.remove("active"));
-        if (!viewId) {
-          return;
-        }
-        const target = document.getElementById(viewId);
-        if (target) {
-          target.classList.add("active");
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+      function showToast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        setTimeout(() => els.toast.classList.remove("show"), 2000);
       }
 
-      function setCalcStatus(message, ok = true) {
-        calcStatus.textContent = message;
-        calcStatus.className = `status ${ok ? "ok" : "err"}`;
+      function setStatus(message, ok = true) {
+        els.statusLine.textContent = message;
+        els.statusLine.className = `status ${ok ? "ok" : "err"}`;
       }
 
-      function clearCalcStatus() {
-        calcStatus.textContent = "";
-        calcStatus.className = "status muted";
+      function clearStatus() {
+        els.statusLine.textContent = "";
+        els.statusLine.className = "status";
       }
 
       function getTelegramId() {
         if (state.telegramId) {
           return state.telegramId;
         }
-        const raw = prompt("Введите Telegram ID для теста в браузере");
-        if (!raw) {
-          return null;
-        }
-        const parsed = Number(raw);
-        if (!Number.isInteger(parsed) || parsed <= 0) {
-          alert("Telegram ID должен быть положительным числом");
-          return null;
-        }
-        state.telegramId = parsed;
-        return state.telegramId;
+        return null;
       }
 
-      async function initOperatorWindowButton() {
-        if (!state.telegramId || !operatorWindowBtn) {
-          return;
+      function parseAmount(raw) {
+        const normalized = String(raw).replace(",", ".").replace(/\s+/g, "").trim();
+        if (!normalized) {
+          return null;
         }
-        try {
-          const me = await api(`/api/me/${state.telegramId}`);
-          if (!me.is_operator) {
-            return;
-          }
-          operatorWindowBtn.classList.remove("hidden");
-          operatorWindowBtn.addEventListener("click", () => {
-            const url = `/admin?telegram_id=${state.telegramId}`;
-            window.location.href = url;
-          });
-        } catch (_) {
-          // ignore optional operator button errors on main page
+        const value = Number(normalized);
+        if (!Number.isFinite(value) || value <= 0) {
+          return null;
         }
+        return value;
+      }
+
+      function formatAmount(value, digits = 6) {
+        if (!Number.isFinite(value)) {
+          return "—";
+        }
+        return Number(value).toLocaleString("ru-RU", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: digits,
+        });
+      }
+
+      function parsePhone(raw) {
+        const candidate = String(raw || "").trim();
+        if (!/^[0-9+\-()\s]{7,25}$/.test(candidate)) {
+          return null;
+        }
+        const digits = candidate.replace(/\D/g, "");
+        if (digits.length < 10) {
+          return null;
+        }
+        return candidate;
+      }
+
+      function updateContactFormState() {
+        const fullName = (els.fullNameInput.value || "").trim();
+        const phone = (els.phoneInput.value || "").trim();
+        const fullNameOk = fullName.length >= 5;
+        const phoneOk = parsePhone(phone) !== null;
+        els.phoneInput.disabled = !fullNameOk;
+        els.requisites.disabled = !(fullNameOk && phoneOk);
       }
 
       async function api(path, options = {}) {
@@ -486,208 +634,334 @@
         return response.json();
       }
 
-      function getCurrenciesByDirection(direction) {
+      function getDirectionMeta(direction) {
         if (direction === "RUB->USDT") {
-          return { send: "RUB", receive: "USDT" };
+          return { send: "RUB", receive: "USDT", quick: [1000, 5000, 10000, 50000] };
         }
         if (direction === "USDT->RUB") {
-          return { send: "USDT", receive: "RUB" };
+          return { send: "USDT", receive: "RUB", quick: [100, 250, 500, 1000] };
         }
-        return { send: "amount", receive: "amount" };
+        return { send: "SUM", receive: "SUM", quick: [] };
       }
 
-      function applyDirection(direction) {
-        state.direction = direction;
-        [...directionsEl.querySelectorAll(".direction")].forEach((btn) => {
-          btn.classList.toggle("active", btn.dataset.direction === direction);
+      function openView(view) {
+        document.querySelectorAll(".view").forEach((el) => {
+          el.classList.toggle("active", el.id === `view-${view}`);
         });
-        const c = getCurrenciesByDirection(direction);
-        amountLabel.textContent = `Сумма отправки (${c.send})`;
+        document.querySelectorAll(".nav-btn[data-view]").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.view === view);
+        });
       }
 
-      function renderDirections(items) {
-        directionsEl.innerHTML = "";
-        state.directions = items;
-        items.forEach((item, index) => {
+      function renderDirectionButtons() {
+        els.directionSegment.innerHTML = "";
+        state.directions.forEach((item) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "direction";
-          btn.dataset.direction = item.id;
           btn.textContent = item.label;
-          btn.addEventListener("click", () => applyDirection(item.id));
-          directionsEl.appendChild(btn);
-          if (index === 0) {
-            applyDirection(item.id);
+          btn.dataset.direction = item.id;
+          if (item.id === state.direction) {
+            btn.classList.add("active");
           }
+          btn.addEventListener("click", () => setDirection(item.id));
+          els.directionSegment.appendChild(btn);
         });
+      }
+
+      function renderRateCalcDirectionButtons() {
+        els.rateCalcDirectionSegment.innerHTML = "";
+        state.directions.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = item.label;
+          btn.dataset.direction = item.id;
+          if (item.id === state.rateCalcDirection) {
+            btn.classList.add("active");
+          }
+          btn.addEventListener("click", () => setRateCalcDirection(item.id));
+          els.rateCalcDirectionSegment.appendChild(btn);
+        });
+      }
+
+      function renderQuickChips() {
+        const meta = getDirectionMeta(state.direction);
+        els.quickChips.innerHTML = "";
+        meta.quick.forEach((amount) => {
+          const chip = document.createElement("button");
+          chip.className = "chip";
+          chip.type = "button";
+          chip.textContent = `${formatAmount(amount, 0)} ${meta.send}`;
+          chip.addEventListener("click", () => {
+            els.sendAmount.value = String(amount);
+            scheduleAutoCalc();
+          });
+          els.quickChips.appendChild(chip);
+        });
+      }
+
+      function setDirection(direction) {
+        state.direction = direction;
+        const meta = getDirectionMeta(direction);
+        els.sendLabel.textContent = `Вы отправляете (${meta.send})`;
+        els.receiveLabel.textContent = `Вы получаете (${meta.receive})`;
+        renderDirectionButtons();
+        renderQuickChips();
+        scheduleAutoCalc();
+      }
+
+      function setRateCalcDirection(direction) {
+        state.rateCalcDirection = direction;
+        const meta = getDirectionMeta(direction);
+        els.rateCalcSendLabel.textContent = `Вы отправляете (${meta.send})`;
+        els.rateCalcReceiveLabel.textContent = `Вы получаете (${meta.receive})`;
+        renderRateCalcDirectionButtons();
+        scheduleRateCalc();
       }
 
       async function loadDirections() {
         const data = await api("/api/directions");
-        renderDirections(data.items || []);
+        state.directions = data.items || [];
+        if (!state.directions.length) {
+          throw new Error("Нет доступных направлений");
+        }
+        setDirection(state.directions[0].id);
+        setRateCalcDirection(state.directions[0].id);
       }
 
       async function calculate() {
-        clearCalcStatus();
-        if (!state.direction) {
-          setCalcStatus("Сначала выберите направление обмена.", false);
+        clearStatus();
+        const amount = parseAmount(els.sendAmount.value);
+        if (!state.direction || amount === null) {
+          els.receiveAmount.value = "";
+          els.finalRateKpi.textContent = "—";
           return null;
         }
-
-        const amount = Number(amountInput.value);
-        if (!Number.isFinite(amount) || amount <= 0) {
-          setCalcStatus("Введите корректную сумму отправки.", false);
-          return null;
-        }
-
-        const data = await api("/api/calc", {
+        const result = await api("/api/calc", {
           method: "POST",
           body: JSON.stringify({
             direction: state.direction,
             amount_send: amount,
           }),
         });
+        els.receiveAmount.value = formatAmount(Number(result.amount_receive), 6);
+        els.finalRateKpi.textContent = formatAmount(Number(result.final_rate), 6);
+        return result;
+      }
 
-        const c = getCurrenciesByDirection(state.direction);
-        calcResult.textContent =
-          `Направление: ${data.direction.replace("->", " -> ")}\n` +
-          `Вы отправляете: ${Number(data.amount_send).toFixed(6)} ${c.send}\n` +
-          `Вы получаете: ${Number(data.amount_receive).toFixed(6)} ${c.receive}\n` +
-          `Базовый курс: ${Number(data.base_rate).toFixed(6)}\n` +
-          `Маржа: +${Number(data.margin_percent).toFixed(2)}%\n` +
-          `Итоговый курс: ${Number(data.final_rate).toFixed(6)}`;
-        return data;
+      function scheduleAutoCalc() {
+        if (state.calcTimer) {
+          clearTimeout(state.calcTimer);
+        }
+        state.calcTimer = setTimeout(() => {
+          calculate().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
+        }, 260);
+      }
+
+      async function calculateRateCalc() {
+        const amount = parseAmount(els.rateCalcSendAmount.value);
+        if (!state.rateCalcDirection || amount === null) {
+          els.rateCalcReceiveAmount.value = "";
+          return null;
+        }
+        const result = await api("/api/calc", {
+          method: "POST",
+          body: JSON.stringify({
+            direction: state.rateCalcDirection,
+            amount_send: amount,
+          }),
+        });
+        els.rateCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 6);
+        return result;
+      }
+
+      function scheduleRateCalc() {
+        if (state.rateCalcTimer) {
+          clearTimeout(state.rateCalcTimer);
+        }
+        state.rateCalcTimer = setTimeout(() => {
+          calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+        }, 260);
       }
 
       async function createRequest() {
-        clearCalcStatus();
         const telegramId = getTelegramId();
         if (!telegramId) {
+          setStatus("Откройте мини-аппу через Telegram-бота.", false);
           return;
         }
-
-        const amount = Number(amountInput.value);
-        const requisites = requisitesInput.value.trim();
-
-        if (!state.direction) {
-          setCalcStatus("Сначала выберите направление обмена.", false);
+        const amount = parseAmount(els.sendAmount.value);
+        if (amount === null) {
+          setStatus("Введите корректную сумму.", false);
           return;
         }
-        if (!Number.isFinite(amount) || amount <= 0) {
-          setCalcStatus("Введите корректную сумму отправки.", false);
+        const requestFullName = (els.fullNameInput.value || "").trim();
+        if (requestFullName.length < 5) {
+          setStatus("Введите ФИО (минимум 5 символов).", false);
           return;
         }
+        const requestPhone = parsePhone(els.phoneInput.value || "");
+        if (!requestPhone) {
+          setStatus("Введите корректный телефон.", false);
+          return;
+        }
+        const requisites = els.requisites.value.trim();
         if (!requisites) {
-          setCalcStatus("Введите реквизиты для получения.", false);
+          setStatus("Введите реквизиты для получения.", false);
           return;
         }
-
+        const requisitesForStorage = `ФИО: ${requestFullName}\nТелефон: ${requestPhone}\nРеквизиты: ${requisites}`;
         const data = await api("/api/requests", {
           method: "POST",
           body: JSON.stringify({
             telegram_id: telegramId,
             username: state.username,
-            full_name: state.fullName,
+            full_name: requestFullName,
             direction: state.direction,
             amount_send: amount,
-            user_requisites: requisites,
+            user_requisites: requisitesForStorage,
           }),
         });
-
-        setCalcStatus(`Заявка #${data.id} создана. Статус: ${data.status}`, true);
-        await loadHistory();
+        const operatorLine = data.operator_username ? `\nОператор: ${data.operator_username}` : "";
+        setStatus(`Заявка #${data.id} принята.${operatorLine}\nМы уведомим вас при смене статуса.`, true);
+        showToast(`Заявка #${data.id} принята`);
       }
 
-      async function loadRateBlock() {
-        if (!state.direction) {
-          rateResult.textContent = "Не удалось определить направление.";
+      async function refreshRate() {
+        if (!state.directions.length) {
+          els.rateInfo.textContent = "Нет доступных направлений.";
           return;
         }
-        const probeAmount = 1;
-        const data = await api("/api/calc", {
-          method: "POST",
-          body: JSON.stringify({
-            direction: state.direction,
-            amount_send: probeAmount,
-          }),
+        const preferredDirections = ["RUB->USDT", "USDT->RUB"];
+        const existingDirectionIds = new Set(state.directions.map((item) => item.id));
+        const selected = preferredDirections.filter((id) => existingDirectionIds.has(id));
+        if (!selected.length) {
+          els.rateInfo.textContent = "Направления RUB/USDT временно недоступны.";
+          return;
+        }
+
+        const quotes = await Promise.all(
+          selected.map(async (directionId) => {
+            const response = await api("/api/calc", {
+              method: "POST",
+              body: JSON.stringify({
+                direction: directionId,
+                amount_send: 1,
+              }),
+            });
+            return { directionId, finalRate: Number(response.final_rate) };
+          })
+        );
+
+        const lines = quotes.map((item) => {
+          if (item.directionId === "RUB->USDT") {
+            return `RUB → USDT: 1 RUB = ${formatAmount(item.finalRate, 6)} USDT`;
+          }
+          return `USDT → RUB: 1 USDT = ${formatAmount(item.finalRate, 6)} RUB`;
         });
-        const c = getCurrenciesByDirection(state.direction);
-        rateResult.textContent =
-          `Направление: ${data.direction.replace("->", " -> ")}\n` +
-          `Курс за 1 ${c.send}: ${Number(data.final_rate).toFixed(6)} ${c.receive}\n` +
-          `Маржа: +${Number(data.margin_percent).toFixed(2)}%`;
+        els.rateInfo.textContent = lines.join("\n");
       }
 
-      async function loadHistory() {
+      async function initOperatorButtons() {
+        const openAdmin = () => {
+          const telegramId = getTelegramId();
+          if (telegramId) {
+            window.location.href = `/admin?telegram_id=${telegramId}`;
+            return;
+          }
+          window.location.href = "/admin";
+        };
+        els.homeAdminBtn.addEventListener("click", openAdmin);
+        els.navAdminBtn.addEventListener("click", openAdmin);
+
         const telegramId = getTelegramId();
         if (!telegramId) {
-          historyList.textContent = "Укажите Telegram ID для просмотра заявок.";
           return;
         }
-        const data = await api(`/api/requests/${telegramId}`);
-        const items = data.items || [];
-        if (!items.length) {
-          historyList.textContent = "Заявок пока нет.";
-          return;
+        try {
+          const me = await api(`/api/me/${telegramId}`);
+          if (me.is_operator) {
+            els.bottomNav.classList.add("has-admin");
+          }
+        } catch (_) {
+          // optional
         }
-        historyList.innerHTML = "";
-        items.forEach((item) => {
-          const row = document.createElement("div");
-          row.className = "history-item";
-          row.innerHTML =
-            `<div><b>#${item.id}</b> ${item.direction.replace("->", " -> ")}</div>` +
-            `<div>Отправка: ${item.amount_send} • Получение: ${item.amount_receive}</div>` +
-            `<div>Статус: <b>${item.status}</b></div>`;
-          historyList.appendChild(row);
-        });
       }
 
-      function bindNavigation() {
-        document.querySelectorAll("[data-view-target]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const target = btn.getAttribute("data-view-target");
-            openView(target || "");
-          });
-        });
-      }
-
-      document.getElementById("calcBtn").addEventListener("click", () => {
-        calculate().catch((e) => setCalcStatus(e.message, false));
-      });
-      document.getElementById("createBtn").addEventListener("click", () => {
-        createRequest().catch((e) => setCalcStatus(e.message, false));
-      });
-      document.getElementById("refreshRateBtn").addEventListener("click", () => {
-        loadRateBlock().catch((e) => {
-          rateResult.textContent = `Ошибка загрузки курса: ${e.message}`;
-        });
-      });
-      document.getElementById("refreshHistoryBtn").addEventListener("click", () => {
-        loadHistory().catch((e) => {
-          historyList.textContent = `Ошибка загрузки истории: ${e.message}`;
-        });
-      });
-      document.getElementById("exchangeBtn").addEventListener("click", () => {
-        window.open("https://rapira.net/ru/exchange/BTC_USDT", "_blank", "noopener");
-      });
-      document.getElementById("supportBtn").addEventListener("click", () => {
+      function openSupport() {
+        const link = "https://t.me/NeboCryptoManager";
         if (tg?.openTelegramLink) {
-          tg.openTelegramLink("https://t.me/NeboCryptoManager");
+          tg.openTelegramLink(link);
           return;
         }
-        window.open("https://t.me/NeboCryptoManager", "_blank", "noopener");
-      });
-      document.getElementById("amlBtn").addEventListener("click", () => {
-        alert("Для AML-проверки напишите в боте команду: AML проверка");
+        window.open(link, "_blank", "noopener");
+      }
+
+      document.querySelectorAll("[data-open]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openView(btn.dataset.open);
+          if (btn.dataset.open === "rate") {
+            refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
+            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+          }
+        });
       });
 
-      bindNavigation();
-      initOperatorWindowButton();
-      loadDirections()
-        .then(() => Promise.all([loadRateBlock(), loadHistory()]))
-        .catch((e) => {
-          setCalcStatus(`Ошибка загрузки: ${e.message}`, false);
+      document.querySelectorAll(".nav-btn[data-view]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openView(btn.dataset.view);
+          if (btn.dataset.view === "rate") {
+            refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
+            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+          }
         });
+      });
+
+      document.querySelectorAll('[data-action="support"]').forEach((btn) => {
+        btn.addEventListener("click", openSupport);
+      });
+
+      document.getElementById("amlBtn").addEventListener("click", () => {
+        showToast("Для AML-проверки используйте кнопку в боте.");
+      });
+
+      document.getElementById("recalcBtn").addEventListener("click", () => {
+        calculate().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
+      });
+
+      document.getElementById("createBtn").addEventListener("click", () => {
+        createRequest().catch((e) => setStatus(`Ошибка заявки: ${e.message}`, false));
+      });
+
+      document.getElementById("refreshRateBtn").addEventListener("click", () => {
+        refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
+      });
+      document.getElementById("rateCalcRecalcBtn").addEventListener("click", () => {
+        calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+      });
+
+      els.sendAmount.addEventListener("input", scheduleAutoCalc);
+      els.rateCalcSendAmount.addEventListener("input", scheduleRateCalc);
+      els.fullNameInput.addEventListener("input", () => {
+        updateContactFormState();
+        clearStatus();
+      });
+      els.phoneInput.addEventListener("input", () => {
+        updateContactFormState();
+        clearStatus();
+      });
+      els.requisites.addEventListener("input", clearStatus);
+
+      if (state.fullName) {
+        els.fullNameInput.value = state.fullName;
+      }
+      updateContactFormState();
+
+      loadDirections()
+        .then(() => calculate())
+        .then(() => refreshRate())
+        .then(() => calculateRateCalc())
+        .then(() => initOperatorButtons())
+        .catch((e) => setStatus(`Ошибка загрузки: ${e.message}`, false));
     </script>
   </body>
 </html>

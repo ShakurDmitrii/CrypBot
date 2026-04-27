@@ -94,6 +94,46 @@
         margin-top: 10px;
       }
 
+      .request-row {
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+
+      .request-row:hover {
+        background: rgba(48, 117, 145, 0.22);
+      }
+
+      .request-row.selected {
+        background: rgba(46, 201, 184, 0.2);
+      }
+
+      .controls {
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 150px 1fr 1fr auto auto;
+      }
+
+      .input,
+      .select {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #0b2b38;
+        color: var(--text);
+        padding: 9px 10px;
+        font: inherit;
+      }
+
+      .btn.danger {
+        background: linear-gradient(160deg, #8a2c2c, #b23a3a);
+      }
+
+      @media (max-width: 900px) {
+        .controls {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -130,6 +170,13 @@
 
       <section class="panel">
         <div class="status" id="status">Ожидание...</div>
+        <div class="controls">
+          <input class="input" id="requestIdInput" type="number" min="1" step="1" placeholder="ID заявки" />
+          <select class="select" id="statusSelect"></select>
+          <input class="input" id="statusCommentInput" type="text" maxlength="512" placeholder="Комментарий (опционально)" />
+          <button class="btn primary" id="applyStatusBtn" type="button">Сменить статус</button>
+          <button class="btn danger" id="deleteRequestBtn" type="button">Удалить заявку</button>
+        </div>
         <div class="table-wrap" id="tableWrap"></div>
       </section>
     </main>
@@ -177,11 +224,33 @@
       const state = {
         telegramId: getTelegramId(),
         accessGranted: false,
+        selectedRequestId: null,
+        lastRequests: [],
       };
+
+      const REQUEST_STATUSES = [
+        "new",
+        "waiting_payment",
+        "payment_received",
+        "processing",
+        "done",
+        "canceled",
+        "disputed",
+      ];
 
       const metaEl = document.getElementById("meta");
       const statusEl = document.getElementById("status");
       const tableWrap = document.getElementById("tableWrap");
+      const requestIdInput = document.getElementById("requestIdInput");
+      const statusSelect = document.getElementById("statusSelect");
+      const statusCommentInput = document.getElementById("statusCommentInput");
+
+      REQUEST_STATUSES.forEach((status) => {
+        const option = document.createElement("option");
+        option.value = status;
+        option.textContent = status;
+        statusSelect.appendChild(option);
+      });
 
       function setStatus(text, isError = false) {
         statusEl.textContent = text;
@@ -197,10 +266,17 @@
           .replaceAll("'", "&#39;");
       }
 
-      async function api(path) {
-        const r = await fetch(path);
+      async function api(path, options = {}) {
+        const r = await fetch(path, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
         if (!r.ok) {
           throw new Error(await r.text());
+        }
+        const contentType = r.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          return {};
         }
         return r.json();
       }
@@ -238,6 +314,141 @@
         tableWrap.innerHTML = `<table>${thead}${tbody}</table>`;
       }
 
+      function renderRequestsTable(items) {
+        if (!items.length) {
+          tableWrap.innerHTML = "<div class='status'>Нет данных.</div>";
+          return;
+        }
+        const headers = [
+          "ID",
+          "Telegram ID",
+          "Username",
+          "Направление",
+          "Отправка",
+          "Получение",
+          "Статус",
+          "Комментарий",
+          "Реквизиты",
+          "Создана",
+          "Обновлена",
+        ];
+        const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+        const tbody = `<tbody>${items
+          .map((r) => {
+            const isSelected = Number(r.id) === Number(state.selectedRequestId);
+            const rowClass = `request-row${isSelected ? " selected" : ""}`;
+            return `<tr class="${rowClass}" data-request-id="${escapeHtml(r.id)}">
+              <td>${escapeHtml(r.id)}</td>
+              <td>${escapeHtml(r.telegram_id || "-")}</td>
+              <td>${escapeHtml(r.username || "-")}</td>
+              <td>${escapeHtml(r.direction)}</td>
+              <td>${escapeHtml(r.amount_send)}</td>
+              <td>${escapeHtml(r.amount_receive)}</td>
+              <td>${escapeHtml(r.status)}</td>
+              <td>${escapeHtml(r.status_comment || "-")}</td>
+              <td>${escapeHtml(r.user_requisites || "-")}</td>
+              <td>${escapeHtml(r.created_at || "-")}</td>
+              <td>${escapeHtml(r.updated_at || "-")}</td>
+            </tr>`;
+          })
+          .join("")}</tbody>`;
+        tableWrap.innerHTML = `<table>${thead}${tbody}</table>`;
+
+        tableWrap.querySelectorAll("tr[data-request-id]").forEach((rowEl) => {
+          rowEl.addEventListener("click", () => {
+            const rawId = rowEl.getAttribute("data-request-id") || "";
+            const requestId = Number(rawId);
+            if (!Number.isInteger(requestId) || requestId <= 0) {
+              return;
+            }
+            const selected = state.lastRequests.find((item) => Number(item.id) === requestId);
+            if (!selected) {
+              return;
+            }
+            state.selectedRequestId = requestId;
+            requestIdInput.value = String(requestId);
+            if (REQUEST_STATUSES.includes(String(selected.status))) {
+              statusSelect.value = String(selected.status);
+            }
+            statusCommentInput.value = selected.status_comment || "";
+            setStatus(`Выбрана заявка #${requestId}. Можно изменить статус или удалить.`);
+            renderRequestsTable(state.lastRequests);
+          });
+        });
+      }
+
+      function parseRequestIdFromInput() {
+        const raw = (requestIdInput.value || "").trim();
+        if (!raw) {
+          return null;
+        }
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value <= 0) {
+          return null;
+        }
+        return value;
+      }
+
+      function parseRequestId() {
+        const fromInput = parseRequestIdFromInput();
+        if (fromInput) {
+          return fromInput;
+        }
+        if (Number.isInteger(state.selectedRequestId) && state.selectedRequestId > 0) {
+          return state.selectedRequestId;
+        }
+        return null;
+      }
+
+      async function applyStatusToRequest() {
+        if (!state.accessGranted) {
+          setStatus("Доступ не предоставлен.", true);
+          return;
+        }
+        const requestId = parseRequestId();
+        if (!requestId) {
+          setStatus("Введите корректный ID заявки.", true);
+          return;
+        }
+        const status = statusSelect.value;
+        const comment = (statusCommentInput.value || "").trim();
+        setStatus(`Обновляю статус заявки #${requestId}...`);
+        const data = await api(`/api/admin/requests/${state.telegramId}/${requestId}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            status,
+            comment: comment || null,
+          }),
+        });
+        setStatus(`Заявка #${data.id}: статус обновлен на ${data.status}.`);
+        await loadRequests();
+      }
+
+      async function deleteRequestById() {
+        if (!state.accessGranted) {
+          setStatus("Доступ не предоставлен.", true);
+          return;
+        }
+        const requestId = parseRequestId();
+        if (!requestId) {
+          setStatus("Введите корректный ID заявки.", true);
+          return;
+        }
+        const confirmed = window.confirm(`Удалить заявку #${requestId}? Это действие необратимо.`);
+        if (!confirmed) {
+          return;
+        }
+        setStatus(`Удаляю заявку #${requestId}...`);
+        await api(`/api/admin/requests/${state.telegramId}/${requestId}`, {
+          method: "DELETE",
+        });
+        state.selectedRequestId = null;
+        requestIdInput.value = "";
+        statusCommentInput.value = "";
+        setStatus(`Заявка #${requestId} удалена.`);
+        await loadRequests();
+      }
+
       async function loadUsers() {
         if (!state.accessGranted) {
           return;
@@ -262,21 +473,15 @@
         }
         setStatus("Загрузка заявок...");
         const data = await api(`/api/admin/requests/${state.telegramId}`);
-        const rows = (data.items || []).map((r) => [
-          r.id,
-          r.telegram_id || "-",
-          r.username || "-",
-          r.direction,
-          r.amount_send,
-          r.amount_receive,
-          r.status,
-          r.created_at || "-",
-        ]);
-        renderTable(
-          ["ID", "Telegram ID", "Username", "Направление", "Отправка", "Получение", "Статус", "Создана"],
-          rows
-        );
-        setStatus(`Заявок: ${rows.length}`);
+        state.lastRequests = data.items || [];
+        if (
+          state.selectedRequestId &&
+          !state.lastRequests.some((item) => Number(item.id) === Number(state.selectedRequestId))
+        ) {
+          state.selectedRequestId = null;
+        }
+        renderRequestsTable(state.lastRequests);
+        setStatus(`Заявок: ${state.lastRequests.length}. Нажмите на строку, чтобы выбрать заявку.`);
       }
 
       async function loadHistory() {
@@ -310,6 +515,27 @@
       });
       document.getElementById("loadHistoryBtn").addEventListener("click", () => {
         loadHistory().catch((e) => setStatus(`Ошибка загрузки истории: ${e.message}`, true));
+      });
+      requestIdInput.addEventListener("input", () => {
+        const parsed = parseRequestIdFromInput();
+        if (!parsed) {
+          state.selectedRequestId = null;
+          renderRequestsTable(state.lastRequests);
+          return;
+        }
+        state.selectedRequestId = parsed;
+        const selected = state.lastRequests.find((item) => Number(item.id) === parsed);
+        if (selected && REQUEST_STATUSES.includes(String(selected.status))) {
+          statusSelect.value = String(selected.status);
+          statusCommentInput.value = selected.status_comment || "";
+        }
+        renderRequestsTable(state.lastRequests);
+      });
+      document.getElementById("applyStatusBtn").addEventListener("click", () => {
+        applyStatusToRequest().catch((e) => setStatus(`Ошибка смены статуса: ${e.message}`, true));
+      });
+      document.getElementById("deleteRequestBtn").addEventListener("click", () => {
+        deleteRequestById().catch((e) => setStatus(`Ошибка удаления заявки: ${e.message}`, true));
       });
       document.getElementById("backBtn").addEventListener("click", () => {
         window.location.href = "/";

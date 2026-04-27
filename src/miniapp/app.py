@@ -5,16 +5,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from src.config import get_settings
-from src.db.models import ExchangeRequest, RequestStatusHistory, User
+from src.db.models import AmlCheck, ExchangeRequest, RequestStatus, RequestStatusHistory, User
 from src.db.session import SessionLocal
 from src.services.app_settings import get_margin_percent
 from src.services.exchange_requests import (
     create_exchange_request,
+    get_request_by_id,
     get_or_create_user,
     list_user_requests,
+    update_request_status,
 )
 from src.services.rates import RateServiceError, available_directions, calc_receive, get_quote
 
@@ -35,9 +37,14 @@ class CreateRequestPayload(BaseModel):
     telegram_id: int
     direction: str
     amount_send: float = Field(gt=0)
-    user_requisites: str = Field(min_length=1, max_length=512)
+    user_requisites: str = Field(min_length=1, max_length=1024)
     username: str | None = Field(default=None, max_length=64)
     full_name: str | None = Field(default=None, max_length=128)
+
+
+class AdminUpdateRequestStatusPayload(BaseModel):
+    status: str
+    comment: str | None = Field(default=None, max_length=512)
 
 
 def _validate_direction(direction: str) -> None:
@@ -52,6 +59,23 @@ def _is_operator(telegram_id: int) -> bool:
 def _require_operator(telegram_id: int) -> None:
     if not _is_operator(telegram_id):
         raise HTTPException(status_code=403, detail="Operator access required")
+
+
+def _operator_username_for_user() -> str:
+    username = settings.bot_operator_username.strip()
+    if not username:
+        return ""
+    if not username.startswith("@"):
+        username = f"@{username}"
+    return username
+
+
+def _parse_request_status(raw: str) -> RequestStatus:
+    try:
+        return RequestStatus(raw)
+    except ValueError as exc:
+        allowed = ", ".join(status.value for status in RequestStatus)
+        raise HTTPException(status_code=400, detail=f"Unsupported status. Allowed: {allowed}") from exc
 
 
 @app.get("/")
@@ -147,6 +171,7 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
         "amount_send": float(request.amount_send),
         "amount_receive": float(request.amount_receive),
         "status": request.status.value,
+        "operator_username": _operator_username_for_user(),
     }
 
 
@@ -241,12 +266,53 @@ async def admin_requests(
                 "final_rate": float(request.final_rate),
                 "status": request.status.value,
                 "status_comment": request.status_comment,
+                "user_requisites": request.user_requisites,
                 "created_at": request.created_at.isoformat() if request.created_at else None,
                 "updated_at": request.updated_at.isoformat() if request.updated_at else None,
             }
             for request, user in items
         ]
     }
+
+
+@app.patch("/api/admin/requests/{telegram_id}/{request_id}/status")
+async def admin_update_request_status(
+    telegram_id: int, request_id: int, payload: AdminUpdateRequestStatusPayload
+) -> dict[str, int | str | None]:
+    _require_operator(telegram_id)
+    new_status = _parse_request_status(payload.status)
+    comment = (payload.comment or "").strip() or None
+    async with SessionLocal() as session:
+        request = await get_request_by_id(session, request_id)
+        if request is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+        await update_request_status(
+            session=session,
+            request=request,
+            new_status=new_status,
+            changed_by=f"miniapp-operator:{telegram_id}",
+            comment=comment,
+        )
+        await session.commit()
+        return {
+            "id": request.id,
+            "status": request.status.value,
+            "status_comment": request.status_comment,
+        }
+
+
+@app.delete("/api/admin/requests/{telegram_id}/{request_id}")
+async def admin_delete_request(telegram_id: int, request_id: int) -> dict[str, int | bool]:
+    _require_operator(telegram_id)
+    async with SessionLocal() as session:
+        request = await get_request_by_id(session, request_id)
+        if request is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+        await session.execute(delete(RequestStatusHistory).where(RequestStatusHistory.request_id == request_id))
+        await session.execute(delete(AmlCheck).where(AmlCheck.request_id == request_id))
+        await session.delete(request)
+        await session.commit()
+    return {"ok": True, "deleted_request_id": request_id}
 
 
 @app.get("/api/admin/request-history/{telegram_id}")
