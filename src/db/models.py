@@ -43,6 +43,7 @@ class User(Base):
     )
 
     requests: Mapped[list["ExchangeRequest"]] = relationship(back_populates="user")
+    support_messages: Mapped[list["SupportMessage"]] = relationship(back_populates="user")
 
 
 class ExchangeRequest(Base):
@@ -124,3 +125,20 @@ class AppSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class SupportMessage(Base):
+    __tablename__ = "support_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    sender_role: Mapped[str] = mapped_column(String(16), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    operator_telegram_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_read_by_user: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_read_by_operator: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="support_messages")
