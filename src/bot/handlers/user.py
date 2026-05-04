@@ -1,5 +1,6 @@
 import re
 import logging
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
@@ -40,8 +41,22 @@ def _is_operator_user(message: Message) -> bool:
     return message.from_user.id in settings.operator_ids
 
 
+def _mini_app_url_for_message(message: Message) -> str:
+    base_url = settings.bot_mini_app_url.strip()
+    if not base_url:
+        return base_url
+    telegram_id = message.from_user.id if message.from_user else None
+    if telegram_id is None:
+        return base_url
+    parsed = urlparse(base_url)
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    query_pairs = [(key, value) for key, value in query_pairs if key != "telegram_id"]
+    query_pairs.append(("telegram_id", str(telegram_id)))
+    return urlunparse(parsed._replace(query=urlencode(query_pairs)))
+
+
 def _menu(message: Message):
-    return main_menu_keyboard(settings.bot_mini_app_url, is_operator=_is_operator_user(message))
+    return main_menu_keyboard(_mini_app_url_for_message(message), is_operator=_is_operator_user(message))
 
 
 def _back_cancel_menu() -> ReplyKeyboardMarkup:

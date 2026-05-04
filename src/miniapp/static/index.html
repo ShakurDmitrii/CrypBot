@@ -1675,7 +1675,15 @@
           return null;
         }
         try {
-          const initDataParams = new URLSearchParams(initData);
+          let rawInitData = String(initData);
+          if (/%[0-9a-f]{2}/i.test(rawInitData)) {
+            try {
+              rawInitData = decodeURIComponent(rawInitData);
+            } catch (_) {
+              // keep original string if decode fails
+            }
+          }
+          const initDataParams = new URLSearchParams(rawInitData);
           const rawUser = initDataParams.get("user");
           return safeParseUser(rawUser);
         } catch (_) {
@@ -2553,9 +2561,12 @@
       initPerformanceMode();
       animateViewContent(document.getElementById("view-home"));
       initRandomSkyMotion();
+      initOperatorButtons().catch(() => {
+        // optional
+      });
 
       loadDirections()
-        .then(() => Promise.all([calculate(), initOperatorButtons()]))
+        .then(() => calculate())
         .then(() => {
           window.setTimeout(() => {
             refreshRate().catch(() => {
