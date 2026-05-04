@@ -1450,6 +1450,7 @@
         </div>
         <div class="menu two">
           <button class="menu-btn" data-open="rate">Курс</button>
+          <button class="menu-btn" data-open="requests">Мои заявки</button>
           <button class="menu-btn" data-open="about">О Небе</button>
         </div>
         <div class="menu">
@@ -1554,6 +1555,16 @@
           <div class="chat-compose">
             <input class="input" id="userChatInput" type="text" maxlength="2000" placeholder="Введите сообщение..." />
             <button class="btn primary" id="userChatSendBtn" type="button">Отправить</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-requests" class="view">
+        <h2 class="title">Мои заявки</h2>
+        <p class="hint">Здесь отображаются ваши заявки и их текущий статус.</p>
+        <div class="panel">
+          <div class="chat-list" id="myRequestsList">
+            <div class="chat-empty">Заявок пока нет.</div>
           </div>
         </div>
       </section>
@@ -1740,6 +1751,7 @@
         floatingCalcTimer: null,
         chatPollTimer: null,
         chatItems: [],
+        myRequests: [],
         viewSwitchTimer: null,
         isViewSwitching: false,
         isOperator: false,
@@ -1774,6 +1786,7 @@
         statusLine: document.getElementById("statusLine"),
         rateInfo: document.getElementById("rateInfo"),
         userChatList: document.getElementById("userChatList"),
+        myRequestsList: document.getElementById("myRequestsList"),
         userChatInput: document.getElementById("userChatInput"),
         userChatSendBtn: document.getElementById("userChatSendBtn"),
         toast: document.getElementById("toast"),
@@ -1973,7 +1986,7 @@
         return value;
       }
 
-      function formatAmount(value, digits = 6) {
+      function formatAmount(value, digits = 2) {
         if (!Number.isFinite(value)) {
           return "—";
         }
@@ -2066,6 +2079,51 @@
         els.userChatList.scrollTop = els.userChatList.scrollHeight;
       }
 
+      function renderMyRequests() {
+        const statusLabels = {
+          new: "Новая",
+          waiting_payment: "Ожидает оплату",
+          payment_received: "Оплата получена",
+          processing: "В обработке",
+          done: "Выполнена",
+          canceled: "Отменена",
+          disputed: "Спор",
+        };
+        if (!state.myRequests.length) {
+          els.myRequestsList.innerHTML = "<div class='chat-empty'>Заявок пока нет.</div>";
+          return;
+        }
+        els.myRequestsList.innerHTML = state.myRequests
+          .map((item) => {
+            const createdAt = item.created_at ? new Date(item.created_at).toLocaleString("ru-RU") : "—";
+            return `
+              <div class="chat-bubble" style="max-width:100%">
+                <div class="chat-text">
+                  <b>#${escapeHtml(item.id)}</b> • ${escapeHtml(item.direction || "-")}<br/>
+                  Отправка: <b>${escapeHtml(formatAmount(Number(item.amount_send), 2))}</b><br/>
+                  Получение: <b>${escapeHtml(formatAmount(Number(item.amount_receive), 2))}</b><br/>
+                  Статус: <b>${escapeHtml(statusLabels[item.status] || item.status || "-")}</b><br/>
+                  Создана: ${escapeHtml(createdAt)}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      async function loadMyRequests(silent = true) {
+        const telegramId = await ensureTelegramId();
+        if (!telegramId) {
+          if (!silent) {
+            showToast("Откройте миниаппу через Telegram-бота");
+          }
+          return;
+        }
+        const data = await api(`/api/requests/${telegramId}`);
+        state.myRequests = data.items || [];
+        renderMyRequests();
+      }
+
       async function loadUserChat(silent = true) {
         const telegramId = await ensureTelegramId();
         if (!telegramId) {
@@ -2130,6 +2188,11 @@
         if (view === "chat") {
           loadUserChat(false).catch((e) => showToast(`Ошибка чата: ${e.message}`));
           startUserChatPolling();
+          return;
+        }
+        if (view === "requests") {
+          loadMyRequests(false).catch((e) => showToast(`Ошибка заявок: ${e.message}`));
+          stopUserChatPolling();
           return;
         }
         stopUserChatPolling();
@@ -2317,8 +2380,8 @@
           return null;
         }
         const result = await requestCalc(state.direction, amount);
-        els.receiveAmount.value = formatAmount(Number(result.amount_receive), 6);
-        els.finalRateKpi.textContent = formatAmount(Number(result.final_rate), 6);
+        els.receiveAmount.value = formatAmount(Number(result.amount_receive), 2);
+        els.finalRateKpi.textContent = formatAmount(Number(result.final_rate), 2);
         return result;
       }
 
@@ -2328,7 +2391,7 @@
         }
         const result = await requestCalc(state.direction, 1);
         const meta = getDirectionMeta(state.direction);
-        els.finalRateKpi.textContent = `1 ${meta.send} = ${formatAmount(Number(result.final_rate), 6)} ${meta.receive}`;
+        els.finalRateKpi.textContent = `1 ${meta.send} = ${formatAmount(Number(result.final_rate), 2)} ${meta.receive}`;
       }
 
       function scheduleAutoCalc() {
@@ -2347,7 +2410,7 @@
           return null;
         }
         const result = await requestCalc(state.rateCalcDirection, amount);
-        els.rateCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 6);
+        els.rateCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 2);
         return result;
       }
 
@@ -2367,7 +2430,7 @@
           return null;
         }
         const result = await requestCalc(state.floatingCalcDirection, amount);
-        els.floatingCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 6);
+        els.floatingCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 2);
         return result;
       }
 
@@ -2429,6 +2492,9 @@
         const operatorLine = data.operator_username ? `\nОператор: ${data.operator_username}` : "";
         setStatus(`Заявка #${data.id} принята.${operatorLine}\nМы уведомим вас при смене статуса.`, true);
         showToast(`Заявка #${data.id} принята`);
+        loadMyRequests(true).catch(() => {
+          // optional background refresh
+        });
       }
 
       async function refreshRate() {
@@ -2453,9 +2519,9 @@
 
         const lines = quotes.map((item) => {
           if (item.directionId === "RUB->USDT") {
-            return `RUB → USDT: 1 RUB = ${formatAmount(item.finalRate, 6)} USDT`;
+            return `RUB → USDT: 1 RUB = ${formatAmount(item.finalRate, 2)} USDT`;
           }
-          return `USDT → RUB: 1 USDT = ${formatAmount(item.finalRate, 6)} RUB`;
+          return `USDT → RUB: 1 USDT = ${formatAmount(item.finalRate, 2)} RUB`;
         });
         els.rateInfo.textContent = lines.join("\n");
       }

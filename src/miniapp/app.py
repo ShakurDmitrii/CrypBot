@@ -1,7 +1,9 @@
+import logging
 import re
 from pathlib import Path
 
 import uvicorn
+from aiogram import Bot
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
@@ -23,6 +25,8 @@ from src.services.exchange_requests import (
 from src.services.rates import RateServiceError, available_directions, calc_receive, get_quote
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
+telegram_bot = Bot(token=settings.bot_token)
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
@@ -98,11 +102,15 @@ def _parse_request_status(raw: str) -> RequestStatus:
 def _extract_phone_from_requisites(user_requisites: str | None) -> str | None:
     if not user_requisites:
         return None
-    match = re.search(r"(?im)^\s*(?:телефон|phone)\s*:\s*(.+?)\s*$", user_requisites)
-    if not match:
-        return None
-    phone = match.group(1).strip()
-    return phone or None
+    for line in user_requisites.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        normalized_key = key.strip().casefold()
+        if ("phone" in normalized_key) or ("телефон" in normalized_key):
+            phone = value.strip()
+            return phone or None
+    return None
 
 
 def _normalize_chat_text(raw: str) -> str:
@@ -110,6 +118,47 @@ def _normalize_chat_text(raw: str) -> str:
     if not text:
         raise HTTPException(status_code=400, detail="Message must not be empty")
     return text
+
+
+def _round2(value: float) -> float:
+    return round(float(value), 2)
+
+
+def _normalize_username(raw: str | None) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return "-"
+    if not value.startswith("@"):
+        value = f"@{value}"
+    return value
+
+
+async def _notify_operator_new_request(
+    request: ExchangeRequest,
+    payload: CreateRequestPayload,
+) -> None:
+    recipient_ids = {settings.bot_operator_chat_id, *settings.operator_ids}
+    message_text = (
+        f"РќРѕРІР°СЏ Р·Р°СЏРІРєР° #{request.id} (miniapp)\n"
+        f"РЎС‚Р°С‚СѓСЃ: РќРѕРІР°СЏ\n"
+        f"user_id={payload.telegram_id}\n"
+        f"username={_normalize_username(payload.username)}\n"
+        f"РќР°РїСЂР°РІР»РµРЅРёРµ: {request.direction}\n"
+        f"РћС‚РїСЂР°РІРєР°: {_round2(float(request.amount_send))}\n"
+        f"РџРѕР»СѓС‡РµРЅРёРµ: {_round2(float(request.amount_receive))}\n"
+        f"РљСѓСЂСЃ: {_round2(float(request.final_rate))}\n"
+        f"Р РµРєРІРёР·РёС‚С‹:\n{request.user_requisites}"
+    )
+    for recipient_id in recipient_ids:
+        try:
+            await telegram_bot.send_message(chat_id=recipient_id, text=message_text)
+        except Exception as exc:
+            logger.warning(
+                "Failed to deliver miniapp request #%s to recipient %s: %s",
+                request.id,
+                recipient_id,
+                exc,
+            )
 
 
 def _serialize_chat_message(message: SupportMessage) -> dict[str, int | str | None]:
@@ -169,10 +218,10 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
     amount_receive = calc_receive(payload.amount_send, quote.final_rate)
     return {
         "direction": payload.direction,
-        "amount_send": payload.amount_send,
-        "amount_receive": amount_receive,
-        "base_rate": quote.base_rate,
-        "final_rate": quote.final_rate,
+        "amount_send": _round2(payload.amount_send),
+        "amount_receive": _round2(amount_receive),
+        "base_rate": _round2(quote.base_rate),
+        "final_rate": _round2(quote.final_rate),
         "margin_percent": quote.margin_percent,
     }
 
@@ -209,11 +258,13 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
         )
         await session.commit()
 
+    await _notify_operator_new_request(request, payload)
+
     return {
         "id": request.id,
         "direction": request.direction,
-        "amount_send": float(request.amount_send),
-        "amount_receive": float(request.amount_receive),
+        "amount_send": _round2(float(request.amount_send)),
+        "amount_receive": _round2(float(request.amount_receive)),
         "status": request.status.value,
         "operator_username": _operator_username_for_user(),
     }
@@ -236,8 +287,8 @@ async def user_requests(telegram_id: int) -> dict[str, list[dict[str, int | str 
             {
                 "id": row.id,
                 "direction": row.direction,
-                "amount_send": float(row.amount_send),
-                "amount_receive": float(row.amount_receive),
+                "amount_send": _round2(float(row.amount_send)),
+                "amount_receive": _round2(float(row.amount_receive)),
                 "status": row.status.value,
                 "created_at": row.created_at.isoformat() if row.created_at else "",
             }
@@ -317,9 +368,9 @@ async def admin_requests(
                 "username": user.username if user else None,
                 "full_name": user.full_name if user else None,
                 "direction": request.direction,
-                "amount_send": float(request.amount_send),
-                "amount_receive": float(request.amount_receive),
-                "final_rate": float(request.final_rate),
+                "amount_send": _round2(float(request.amount_send)),
+                "amount_receive": _round2(float(request.amount_receive)),
+                "final_rate": _round2(float(request.final_rate)),
                 "status": request.status.value,
                 "status_comment": request.status_comment,
                 "user_requisites": request.user_requisites,
@@ -583,3 +634,4 @@ async def admin_request_history(
 
 if __name__ == "__main__":
     uvicorn.run("src.miniapp.app:app", host="0.0.0.0", port=8080, reload=True)
+

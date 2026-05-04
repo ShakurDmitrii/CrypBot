@@ -541,6 +541,17 @@
         return d.toLocaleString("ru-RU");
       }
 
+      function formatAmount(value, digits = 2) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          return "-";
+        }
+        return num.toLocaleString("ru-RU", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: digits,
+        });
+      }
+
       function formatChatDate(value) {
         if (!value) {
           return "";
@@ -717,9 +728,9 @@
               <td>#${escapeHtml(r.id)}</td>
               <td>${escapeHtml(normalizeUsername(r.username))}<br><span class="muted">${escapeHtml(r.telegram_id || "-")}</span></td>
               <td>${escapeHtml(r.direction || "-")}</td>
-              <td>${escapeHtml(r.amount_send || "-")}</td>
-              <td>${escapeHtml(r.amount_receive || "-")}</td>
-              <td>${escapeHtml(r.final_rate || "-")}</td>
+              <td>${escapeHtml(formatAmount(r.amount_send, 2))}</td>
+              <td>${escapeHtml(formatAmount(r.amount_receive, 2))}</td>
+              <td>${escapeHtml(formatAmount(r.final_rate, 2))}</td>
               <td><span class="status-pill">${escapeHtml(STATUS_LABELS[r.status] || r.status || "-")}</span></td>
               <td>${escapeHtml(formatDate(r.updated_at || r.created_at))}</td>
             </tr>`;
