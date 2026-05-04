@@ -1453,7 +1453,7 @@
           <button class="menu-btn" data-open="about">О Небе</button>
         </div>
         <div class="menu">
-          <button class="menu-btn" id="homeAdminBtn" type="button">Пульт оператора</button>
+          <button class="menu-btn hidden" id="homeAdminBtn" type="button">Пульт оператора</button>
         </div>
         <div class="home-guide">
           <div class="head">Как оформить заявку</div>
@@ -1586,7 +1586,7 @@
 
     </main>
 
-    <nav class="bottom-nav has-admin" id="bottomNav">
+    <nav class="bottom-nav" id="bottomNav">
       <button class="nav-btn active" data-view="home" type="button" aria-label="Главная" title="Главная">
         <span class="nav-icon" aria-hidden="true">⌂</span>
       </button>
@@ -1610,7 +1610,7 @@
       <button class="nav-btn" data-view="chat" type="button" aria-label="Поддержка" title="Поддержка">
         <span class="nav-icon" aria-hidden="true">✉</span>
       </button>
-      <button class="nav-btn" id="navAdminBtn" type="button" aria-label="Админ" title="Админ">
+      <button class="nav-btn hidden" id="navAdminBtn" type="button" aria-label="Админ" title="Админ">
         <span class="nav-icon" aria-hidden="true">⚙</span>
       </button>
     </nav>
@@ -1734,6 +1734,7 @@
         chatItems: [],
         viewSwitchTimer: null,
         isViewSwitching: false,
+        isOperator: false,
         isLiteMode: false,
         calcCache: new Map(),
       };
@@ -1810,11 +1811,21 @@
       }
 
       function getTelegramId() {
-        const currentIdFromTg = Number(tg?.initDataUnsafe?.user?.id || "");
-        if (Number.isInteger(currentIdFromTg) && currentIdFromTg > 0) {
-          state.telegramId = currentIdFromTg;
-          window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(currentIdFromTg));
-          return currentIdFromTg;
+        const resolved = resolveTelegramIdentity();
+        const resolvedId = Number(resolved?.id || "");
+        if (Number.isInteger(resolvedId) && resolvedId > 0) {
+          state.telegramId = resolvedId;
+          if (!state.username && resolved?.username) {
+            state.username = resolved.username;
+          }
+          if (!state.fullName) {
+            state.fullName =
+              [resolved?.first_name, resolved?.last_name]
+                .filter(Boolean)
+                .join(" ") || null;
+          }
+          window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(resolvedId));
+          return resolvedId;
         }
         if (state.telegramId) {
           return state.telegramId;
@@ -1823,6 +1834,20 @@
         if (Number.isInteger(storedId) && storedId > 0) {
           state.telegramId = storedId;
           return storedId;
+        }
+        return null;
+      }
+
+      async function ensureTelegramId() {
+        const attempts = [0, 120, 220, 360];
+        for (const delay of attempts) {
+          if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+          const id = getTelegramId();
+          if (id) {
+            return id;
+          }
         }
         return null;
       }
@@ -2034,7 +2059,7 @@
       }
 
       async function loadUserChat(silent = true) {
-        const telegramId = getTelegramId();
+        const telegramId = await ensureTelegramId();
         if (!telegramId) {
           if (!silent) {
             showToast("Откройте миниаппу через Telegram-бота");
@@ -2067,7 +2092,7 @@
       }
 
       async function sendUserChatMessage() {
-        const telegramId = getTelegramId();
+        const telegramId = await ensureTelegramId();
         if (!telegramId) {
           showToast("Откройте миниаппу через Telegram-бота");
           return;
@@ -2356,7 +2381,7 @@
       }
 
       async function createRequest() {
-        const telegramId = getTelegramId();
+        const telegramId = await ensureTelegramId();
         if (!telegramId) {
           setStatus("Откройте мини-аппу через Telegram-бота.", false);
           return;
@@ -2438,18 +2463,26 @@
         };
         els.homeAdminBtn.addEventListener("click", openAdmin);
         els.navAdminBtn.addEventListener("click", openAdmin);
+        els.homeAdminBtn.classList.add("hidden");
+        els.navAdminBtn.classList.add("hidden");
+        els.bottomNav.classList.remove("has-admin");
 
-        const telegramId = getTelegramId();
+        const telegramId = await ensureTelegramId();
         if (!telegramId) {
           return;
         }
         try {
           const me = await api(`/api/me/${telegramId}`);
           if (me.is_operator) {
+            state.isOperator = true;
             els.bottomNav.classList.add("has-admin");
+            els.homeAdminBtn.classList.remove("hidden");
+            els.navAdminBtn.classList.remove("hidden");
+            return;
           }
+          state.isOperator = false;
         } catch (_) {
-          // optional
+          state.isOperator = false;
         }
       }
 
