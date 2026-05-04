@@ -1362,6 +1362,26 @@
         }
       }
 
+      body.lite-mode .overlay::before,
+      body.lite-mode .crypto-sky,
+      body.lite-mode .hero-cloud {
+        display: none !important;
+      }
+
+      body.lite-mode .brand-wrap::before,
+      body.lite-mode .brand-wrap::after,
+      body.lite-mode .brand,
+      body.lite-mode .brand-sub,
+      body.lite-mode .stagger-item {
+        animation: none !important;
+      }
+
+      body.lite-mode .panel,
+      body.lite-mode .menu-btn,
+      body.lite-mode .btn {
+        box-shadow: none !important;
+      }
+
       @media (max-width: 720px) {
         .chat-compose {
           grid-template-columns: 1fr;
@@ -1634,14 +1654,73 @@
       }
 
       const qs = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
       const queryTelegramId = Number(qs.get("telegram_id"));
       const fallbackTelegramId = Number.isInteger(queryTelegramId) && queryTelegramId > 0 ? queryTelegramId : null;
+      const TELEGRAM_ID_STORAGE_KEY = "crypbot_telegram_id";
+
+      function safeParseUser(raw) {
+        if (!raw) {
+          return null;
+        }
+        try {
+          return JSON.parse(raw);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function parseUserFromInitData(initData) {
+        if (!initData) {
+          return null;
+        }
+        try {
+          const initDataParams = new URLSearchParams(initData);
+          const rawUser = initDataParams.get("user");
+          return safeParseUser(rawUser);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function resolveTelegramIdentity() {
+        const tgUser = tg?.initDataUnsafe?.user ?? null;
+        if (tgUser?.id) {
+          return tgUser;
+        }
+
+        const rawTgWebAppData = hashParams.get("tgWebAppData") || qs.get("tgWebAppData");
+        const parsedFromTgInitData = parseUserFromInitData(tg?.initData || "");
+        if (parsedFromTgInitData?.id) {
+          return parsedFromTgInitData;
+        }
+        const parsedFromUrl = parseUserFromInitData(rawTgWebAppData || "");
+        if (parsedFromUrl?.id) {
+          return parsedFromUrl;
+        }
+
+        if (fallbackTelegramId) {
+          return { id: fallbackTelegramId };
+        }
+
+        const storedId = Number(window.localStorage.getItem(TELEGRAM_ID_STORAGE_KEY) || "");
+        if (Number.isInteger(storedId) && storedId > 0) {
+          return { id: storedId };
+        }
+
+        return null;
+      }
+
+      const resolvedIdentity = resolveTelegramIdentity();
+      if (resolvedIdentity?.id) {
+        window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(resolvedIdentity.id));
+      }
 
       const state = {
-        telegramId: tg?.initDataUnsafe?.user?.id ?? fallbackTelegramId,
-        username: tg?.initDataUnsafe?.user?.username ?? null,
+        telegramId: resolvedIdentity?.id ?? null,
+        username: resolvedIdentity?.username ?? null,
         fullName:
-          [tg?.initDataUnsafe?.user?.first_name, tg?.initDataUnsafe?.user?.last_name]
+          [resolvedIdentity?.first_name, resolvedIdentity?.last_name]
             .filter(Boolean)
             .join(" ") || null,
         direction: null,
@@ -1655,6 +1734,8 @@
         chatItems: [],
         viewSwitchTimer: null,
         isViewSwitching: false,
+        isLiteMode: false,
+        calcCache: new Map(),
       };
 
       const els = {
@@ -1729,8 +1810,19 @@
       }
 
       function getTelegramId() {
+        const currentIdFromTg = Number(tg?.initDataUnsafe?.user?.id || "");
+        if (Number.isInteger(currentIdFromTg) && currentIdFromTg > 0) {
+          state.telegramId = currentIdFromTg;
+          window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(currentIdFromTg));
+          return currentIdFromTg;
+        }
         if (state.telegramId) {
           return state.telegramId;
+        }
+        const storedId = Number(window.localStorage.getItem(TELEGRAM_ID_STORAGE_KEY) || "");
+        if (Number.isInteger(storedId) && storedId > 0) {
+          state.telegramId = storedId;
+          return storedId;
         }
         return null;
       }
@@ -1739,19 +1831,43 @@
         return min + Math.random() * (max - min);
       }
 
-      function initRandomSkyMotion() {
+      function shouldUseLiteMode() {
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduceMotion) {
+          return true;
+        }
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const saveData = Boolean(connection?.saveData);
+        const slowNetwork = ["slow-2g", "2g", "3g"].includes(connection?.effectiveType || "");
+        const lowCpu = typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 4;
+        const lowRam = typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 4;
+        return saveData || slowNetwork || (lowCpu && lowRam);
+      }
+
+      function initPerformanceMode() {
+        state.isLiteMode = shouldUseLiteMode();
+        if (state.isLiteMode) {
+          document.body.classList.add("lite-mode");
+        }
+      }
+
+      function initRandomSkyMotion() {
+        if (state.isLiteMode) {
           return;
         }
         const sky = document.querySelector(".crypto-sky");
         if (!sky) {
           return;
         }
-        const movingItems = sky.querySelectorAll(".sky-cloud, .run-coin");
-        if (!movingItems.length) {
+        const allItems = Array.from(sky.querySelectorAll(".sky-cloud, .run-coin"));
+        if (!allItems.length) {
           return;
         }
+        const maxItems = window.innerWidth <= 720 ? 6 : allItems.length;
+        const movingItems = allItems.slice(0, maxItems);
+        allItems.slice(maxItems).forEach((item) => {
+          item.style.display = "none";
+        });
 
         movingItems.forEach((el) => {
           el.style.animation = "none";
@@ -1865,6 +1981,35 @@
           throw new Error(text || `HTTP ${response.status}`);
         }
         return response.json();
+      }
+
+      const CALC_CACHE_TTL_MS = 10000;
+
+      function buildCalcCacheKey(direction, amountSend) {
+        return `${direction}|${Number(amountSend).toFixed(8)}`;
+      }
+
+      async function requestCalc(direction, amountSend) {
+        if (!direction || !Number.isFinite(Number(amountSend))) {
+          throw new Error("Invalid calc payload");
+        }
+        const key = buildCalcCacheKey(direction, amountSend);
+        const cached = state.calcCache.get(key);
+        if (cached && cached.expiresAt > Date.now()) {
+          return cached.data;
+        }
+        const data = await api("/api/calc", {
+          method: "POST",
+          body: JSON.stringify({
+            direction,
+            amount_send: amountSend,
+          }),
+        });
+        state.calcCache.set(key, {
+          data,
+          expiresAt: Date.now() + CALC_CACHE_TTL_MS,
+        });
+        return data;
       }
 
       function renderUserChatMessages() {
@@ -2138,13 +2283,7 @@
           els.receiveAmount.value = "";
           return null;
         }
-        const result = await api("/api/calc", {
-          method: "POST",
-          body: JSON.stringify({
-            direction: state.direction,
-            amount_send: amount,
-          }),
-        });
+        const result = await requestCalc(state.direction, amount);
         els.receiveAmount.value = formatAmount(Number(result.amount_receive), 6);
         els.finalRateKpi.textContent = formatAmount(Number(result.final_rate), 6);
         return result;
@@ -2154,13 +2293,7 @@
         if (!state.direction) {
           return;
         }
-        const result = await api("/api/calc", {
-          method: "POST",
-          body: JSON.stringify({
-            direction: state.direction,
-            amount_send: 1,
-          }),
-        });
+        const result = await requestCalc(state.direction, 1);
         const meta = getDirectionMeta(state.direction);
         els.finalRateKpi.textContent = `1 ${meta.send} = ${formatAmount(Number(result.final_rate), 6)} ${meta.receive}`;
       }
@@ -2180,13 +2313,7 @@
           els.rateCalcReceiveAmount.value = "";
           return null;
         }
-        const result = await api("/api/calc", {
-          method: "POST",
-          body: JSON.stringify({
-            direction: state.rateCalcDirection,
-            amount_send: amount,
-          }),
-        });
+        const result = await requestCalc(state.rateCalcDirection, amount);
         els.rateCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 6);
         return result;
       }
@@ -2206,13 +2333,7 @@
           els.floatingCalcReceiveAmount.value = "";
           return null;
         }
-        const result = await api("/api/calc", {
-          method: "POST",
-          body: JSON.stringify({
-            direction: state.floatingCalcDirection,
-            amount_send: amount,
-          }),
-        });
+        const result = await requestCalc(state.floatingCalcDirection, amount);
         els.floatingCalcReceiveAmount.value = formatAmount(Number(result.amount_receive), 6);
         return result;
       }
@@ -2292,13 +2413,7 @@
 
         const quotes = await Promise.all(
           selected.map(async (directionId) => {
-            const response = await api("/api/calc", {
-              method: "POST",
-              body: JSON.stringify({
-                direction: directionId,
-                amount_send: 1,
-              }),
-            });
+            const response = await requestCalc(directionId, 1);
             return { directionId, finalRate: Number(response.final_rate) };
           })
         );
@@ -2402,14 +2517,22 @@
         els.fullNameInput.value = state.fullName;
       }
       updateContactFormState();
+      initPerformanceMode();
       animateViewContent(document.getElementById("view-home"));
       initRandomSkyMotion();
 
       loadDirections()
-        .then(() => calculate())
-        .then(() => refreshRate())
-        .then(() => calculateRateCalc())
-        .then(() => initOperatorButtons())
+        .then(() => Promise.all([calculate(), initOperatorButtons()]))
+        .then(() => {
+          window.setTimeout(() => {
+            refreshRate().catch(() => {
+              // loaded on demand
+            });
+            calculateRateCalc().catch(() => {
+              // loaded on demand
+            });
+          }, 120);
+        })
         .catch((e) => setStatus(`Ошибка загрузки: ${e.message}`, false));
     </script>
   </body>
