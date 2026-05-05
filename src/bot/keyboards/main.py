@@ -14,8 +14,8 @@ def _is_valid_telegram_webapp_url(raw_url: str) -> bool:
 def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> ReplyKeyboardMarkup:
     keyboard: list[list[KeyboardButton]] = [
         [KeyboardButton(text="Курс"), KeyboardButton(text="Рассчитать")],
-        [KeyboardButton(text="Создать заявку")],
-        [KeyboardButton(text="Оферта")],
+        [KeyboardButton(text="Создать заявку"), KeyboardButton(text="История")],
+        [KeyboardButton(text="Оферта"), KeyboardButton(text="AML проверка")],
     ]
 
     if _is_valid_telegram_webapp_url(mini_app_url):
@@ -24,7 +24,6 @@ def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> Rep
         )
 
     if is_operator:
-        keyboard.append([KeyboardButton(text="История")])
         keyboard.append([KeyboardButton(text="Команды оператора")])
 
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
@@ -54,18 +53,6 @@ def request_confirm_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Подтвердить"), KeyboardButton(text="Изменить")],
-            [KeyboardButton(text="Назад"), KeyboardButton(text="Отмена")],
-        ],
-        resize_keyboard=True,
-    )
-
-
-def request_edit_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Направление"), KeyboardButton(text="Сумма")],
-            [KeyboardButton(text="ФИО"), KeyboardButton(text="Телефон")],
-            [KeyboardButton(text="Реквизиты")],
             [KeyboardButton(text="Назад"), KeyboardButton(text="Отмена")],
         ],
         resize_keyboard=True,

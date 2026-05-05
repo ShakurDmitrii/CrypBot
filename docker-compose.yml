@@ -22,7 +22,7 @@ services:
     volumes:
       - bot_data:/app/data
     ports:
-      - "8080:8080"
+      - "8090:8080"
     restart: unless-stopped
 
 volumes:

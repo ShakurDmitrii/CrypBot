@@ -1,5 +1,5 @@
 import logging
-import re
+import math
 from pathlib import Path
 
 import uvicorn
@@ -14,7 +14,13 @@ from sqlalchemy import and_, case, delete, func, select, update
 from src.config import get_settings
 from src.db.models import AmlCheck, ExchangeRequest, RequestStatus, RequestStatusHistory, SupportMessage, User
 from src.db.session import SessionLocal
-from src.services.app_settings import get_margin_percent
+from src.services.app_settings import (
+    MIN_DEAL_USDT_ALLOWED,
+    MIN_DEAL_USDT_DEFAULT,
+    get_margin_percent,
+    get_min_deal_usdt,
+    set_min_deal_usdt,
+)
 from src.services.exchange_requests import (
     create_exchange_request,
     get_request_by_id,
@@ -38,6 +44,11 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 class CalcRequest(BaseModel):
     direction: str
     amount_send: float = Field(gt=0)
+
+
+class CalcReverseRequest(BaseModel):
+    direction: str
+    amount_receive: float = Field(gt=0)
 
 
 class CreateRequestPayload(BaseModel):
@@ -64,8 +75,13 @@ class AdminSupportMessagePayload(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
 
 
+class AdminUpdateSettingsPayload(BaseModel):
+    min_deal_usdt: int
+
+
 CHAT_ROLE_USER = "user"
 CHAT_ROLE_OPERATOR = "operator"
+RUB_ROUND_STEP = 500
 
 
 def _validate_direction(direction: str) -> None:
@@ -107,7 +123,7 @@ def _extract_phone_from_requisites(user_requisites: str | None) -> str | None:
             continue
         key, value = line.split(":", 1)
         normalized_key = key.strip().casefold()
-        if ("phone" in normalized_key) or ("телефон" in normalized_key):
+        if ("phone" in normalized_key) or ("\u0442\u0435\u043b\u0435\u0444\u043e\u043d" in normalized_key):
             phone = value.strip()
             return phone or None
     return None
@@ -122,6 +138,60 @@ def _normalize_chat_text(raw: str) -> str:
 
 def _round2(value: float) -> float:
     return round(float(value), 2)
+
+
+def _split_direction(direction: str) -> tuple[str, str]:
+    parts = direction.split("->", 1)
+    if len(parts) != 2:
+        return "SUM", "SUM"
+    return parts[0].strip().upper(), parts[1].strip().upper()
+
+
+def _round_to_step(value: float, step: int) -> float:
+    if step <= 0:
+        return float(value)
+    return float(round(float(value) / step) * step)
+
+
+def _ceil_to_step(value: float, step: int) -> float:
+    if step <= 0:
+        return float(value)
+    return float(math.ceil(float(value) / step) * step)
+
+
+def _normalize_amount_by_currency(value: float, currency: str) -> float:
+    if currency == "RUB":
+        return _round_to_step(value, RUB_ROUND_STEP)
+    return _round2(value)
+
+
+def _calculate_receive(direction: str, amount_send: float, final_rate: float) -> tuple[float, float]:
+    send_currency, receive_currency = _split_direction(direction)
+    normalized_send = _normalize_amount_by_currency(amount_send, send_currency)
+    raw_receive = calc_receive(normalized_send, final_rate)
+    normalized_receive = _normalize_amount_by_currency(raw_receive, receive_currency)
+    return normalized_send, normalized_receive
+
+
+def _calculate_send_from_receive(direction: str, amount_receive: float, final_rate: float) -> tuple[float, float]:
+    if final_rate <= 0:
+        raise HTTPException(status_code=503, detail="Rate is unavailable")
+    send_currency, receive_currency = _split_direction(direction)
+    normalized_receive = _normalize_amount_by_currency(amount_receive, receive_currency)
+    raw_send = normalized_receive / final_rate
+    normalized_send = _normalize_amount_by_currency(raw_send, send_currency)
+    _, normalized_receive_after_send = _calculate_receive(direction, normalized_send, final_rate)
+    return normalized_send, normalized_receive_after_send
+
+
+def _min_send_amount(direction: str, final_rate: float, min_deal_usdt: int) -> float:
+    send_currency, receive_currency = _split_direction(direction)
+    if send_currency == "USDT":
+        return float(min_deal_usdt)
+    if receive_currency == "USDT" and final_rate > 0:
+        rub_value = min_deal_usdt / final_rate
+        return _ceil_to_step(rub_value, RUB_ROUND_STEP)
+    return 0.0
 
 
 def _normalize_username(raw: str | None) -> str:
@@ -196,6 +266,38 @@ async def offer() -> dict[str, str]:
     return {"url": settings.bot_offer_url}
 
 
+@app.get("/api/admin/settings/{telegram_id}")
+async def admin_settings(telegram_id: int) -> dict[str, int | list[int]]:
+    _require_operator(telegram_id)
+    async with SessionLocal() as session:
+        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+    return {
+        "min_deal_usdt": int(min_deal_usdt),
+        "allowed_min_deal_usdt": list(MIN_DEAL_USDT_ALLOWED),
+    }
+
+
+@app.patch("/api/admin/settings/{telegram_id}")
+async def admin_update_settings(
+    telegram_id: int,
+    payload: AdminUpdateSettingsPayload,
+) -> dict[str, int | list[int]]:
+    _require_operator(telegram_id)
+    if payload.min_deal_usdt not in MIN_DEAL_USDT_ALLOWED:
+        allowed = ", ".join(str(item) for item in MIN_DEAL_USDT_ALLOWED)
+        raise HTTPException(status_code=400, detail=f"min_deal_usdt must be one of: {allowed}")
+    async with SessionLocal() as session:
+        try:
+            await set_min_deal_usdt(session, payload.min_deal_usdt)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        await session.commit()
+    return {
+        "min_deal_usdt": int(payload.min_deal_usdt),
+        "allowed_min_deal_usdt": list(MIN_DEAL_USDT_ALLOWED),
+    }
+
+
 @app.get("/api/directions")
 async def directions() -> dict[str, list[dict[str, str]]]:
     return {
@@ -211,18 +313,52 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
     try:
         quote = await get_quote(payload.direction, margin_percent, settings)
     except RateServiceError as exc:
         raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
-    amount_receive = calc_receive(payload.amount_send, quote.final_rate)
+    amount_send, amount_receive = _calculate_receive(payload.direction, payload.amount_send, quote.final_rate)
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt)
+    send_currency, _ = _split_direction(payload.direction)
     return {
         "direction": payload.direction,
-        "amount_send": _round2(payload.amount_send),
-        "amount_receive": _round2(amount_receive),
+        "amount_send": amount_send,
+        "amount_receive": amount_receive,
         "base_rate": _round2(quote.base_rate),
         "final_rate": _round2(quote.final_rate),
         "margin_percent": quote.margin_percent,
+        "min_deal_usdt": min_deal_usdt,
+        "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency),
+    }
+
+
+@app.post("/api/calc-reverse")
+async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
+    _validate_direction(payload.direction)
+    async with SessionLocal() as session:
+        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+    try:
+        quote = await get_quote(payload.direction, margin_percent, settings)
+    except RateServiceError as exc:
+        raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
+    amount_send, amount_receive = _calculate_send_from_receive(
+        payload.direction,
+        payload.amount_receive,
+        quote.final_rate,
+    )
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt)
+    send_currency, _ = _split_direction(payload.direction)
+    return {
+        "direction": payload.direction,
+        "amount_send": amount_send,
+        "amount_receive": amount_receive,
+        "base_rate": _round2(quote.base_rate),
+        "final_rate": _round2(quote.final_rate),
+        "margin_percent": quote.margin_percent,
+        "min_deal_usdt": min_deal_usdt,
+        "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency),
     }
 
 
@@ -231,11 +367,19 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
     try:
         quote = await get_quote(payload.direction, margin_percent, settings)
     except RateServiceError as exc:
         raise HTTPException(status_code=503, detail="Rate provider is temporarily unavailable") from exc
-    amount_receive = calc_receive(payload.amount_send, quote.final_rate)
+    amount_send, amount_receive = _calculate_receive(payload.direction, payload.amount_send, quote.final_rate)
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt)
+    if min_amount_send > 0 and amount_send < min_amount_send:
+        send_currency, _ = _split_direction(payload.direction)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Минимальная сделка: {format(_normalize_amount_by_currency(min_amount_send, send_currency), '.2f')} {send_currency}",
+        )
 
     async with SessionLocal() as session:
         user = await get_or_create_user(
@@ -248,7 +392,7 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
             session=session,
             user_id=user.id,
             direction=payload.direction,
-            amount_send=payload.amount_send,
+            amount_send=amount_send,
             amount_receive=amount_receive,
             base_rate=quote.base_rate,
             margin_percent=quote.margin_percent,
