@@ -13,6 +13,7 @@ from src.bot.keyboards.main import (
     direction_keyboard,
     main_menu_keyboard,
     request_confirm_keyboard,
+    request_edit_keyboard,
 )
 from src.bot.states.request_flow import AmlFlow, CalcFlow, CreateRequestFlow
 from src.config import get_settings
@@ -32,7 +33,20 @@ CANCEL_TEXT = "Отмена"
 BACK_TEXT = "Назад"
 CONFIRM_TEXT = "Подтвердить"
 EDIT_TEXT = "Изменить"
+EDIT_FIELD_DIRECTION_TEXT = "Направление"
+EDIT_FIELD_AMOUNT_TEXT = "Сумма"
+EDIT_FIELD_FULL_NAME_TEXT = "ФИО"
+EDIT_FIELD_PHONE_TEXT = "Телефон"
+EDIT_FIELD_REQUISITES_TEXT = "Реквизиты"
 logger = logging.getLogger(__name__)
+
+REQUEST_EDIT_FIELD_STATES = {
+    CreateRequestFlow.waiting_direction.state,
+    CreateRequestFlow.waiting_amount.state,
+    CreateRequestFlow.waiting_full_name.state,
+    CreateRequestFlow.waiting_phone.state,
+    CreateRequestFlow.waiting_requisites.state,
+}
 
 
 def _is_operator_user(message: Message) -> bool:
@@ -152,6 +166,64 @@ async def _build_request_preview_text(
     )
 
 
+def _get_request_preview_data(data: dict) -> tuple[str, float, str, str, str] | None:
+    direction = data.get("direction")
+    amount_raw = data.get("amount")
+    request_full_name = data.get("request_full_name")
+    request_phone = data.get("request_phone")
+    requisites = data.get("request_requisites")
+    if not direction or amount_raw is None or not request_full_name or not request_phone or not requisites:
+        return None
+    return str(direction), float(amount_raw), str(request_full_name), str(request_phone), str(requisites)
+
+
+async def _show_request_confirmation(message: Message, state: FSMContext, prefix: str = "Шаг подтверждения.") -> bool:
+    preview_data = _get_request_preview_data(await state.get_data())
+    if preview_data is None:
+        await state.clear()
+        await message.answer(
+            "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
+            reply_markup=_menu(message),
+        )
+        return False
+
+    direction, amount_send, request_full_name, request_phone, requisites = preview_data
+    preview = await _build_request_preview_text(
+        direction=direction,
+        amount_send=amount_send,
+        request_full_name=request_full_name,
+        request_phone=request_phone,
+        requisites=requisites,
+    )
+    if preview is None:
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
+        return False
+
+    await state.update_data(editing_field=None)
+    await state.set_state(CreateRequestFlow.waiting_confirm)
+    await message.answer(
+        prefix + "\n" + preview + "\n\nПодтвердить создание заявки?",
+        reply_markup=request_confirm_keyboard(),
+    )
+    return True
+
+
+async def _cancel_request_edit(message: Message, state: FSMContext) -> bool:
+    data = await state.get_data()
+    current_state = await state.get_state()
+    if current_state != CreateRequestFlow.waiting_edit_field.state and (
+        current_state not in REQUEST_EDIT_FIELD_STATES or not data.get("editing_field")
+    ):
+        return False
+
+    await _show_request_confirmation(message, state, "Редактирование отменено.")
+    return True
+
+
+async def _finish_request_field_edit(message: Message, state: FSMContext) -> None:
+    await _show_request_confirmation(message, state, "Заявка обновлена.")
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
@@ -163,6 +235,8 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
 @router.message(StateFilter("*"), F.text == CANCEL_TEXT)
 async def cancel_flow(message: Message, state: FSMContext) -> None:
+    if await _cancel_request_edit(message, state):
+        return
     await state.clear()
     await message.answer("Действие отменено.", reply_markup=_menu(message))
 
@@ -184,12 +258,20 @@ async def calc_back_from_amount(message: Message, state: FSMContext) -> None:
 
 @router.message(StateFilter(CreateRequestFlow.waiting_direction), F.text == BACK_TEXT)
 async def request_back_from_direction(message: Message, state: FSMContext) -> None:
+    if (await state.get_data()).get("editing_field"):
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
+        await message.answer("Выберите, что изменить в заявке.", reply_markup=request_edit_keyboard())
+        return
     await state.clear()
     await message.answer("Возврат в главное меню.", reply_markup=_menu(message))
 
 
 @router.message(StateFilter(CreateRequestFlow.waiting_amount), F.text == BACK_TEXT)
 async def request_back_from_amount(message: Message, state: FSMContext) -> None:
+    if (await state.get_data()).get("editing_field"):
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
+        await message.answer("Выберите, что изменить в заявке.", reply_markup=request_edit_keyboard())
+        return
     await state.set_state(CreateRequestFlow.waiting_direction)
     await message.answer(
         "Шаг 1/5. Выберите направление кнопкой ниже.",
@@ -199,18 +281,30 @@ async def request_back_from_amount(message: Message, state: FSMContext) -> None:
 
 @router.message(StateFilter(CreateRequestFlow.waiting_full_name), F.text == BACK_TEXT)
 async def request_back_from_full_name(message: Message, state: FSMContext) -> None:
+    if (await state.get_data()).get("editing_field"):
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
+        await message.answer("Выберите, что изменить в заявке.", reply_markup=request_edit_keyboard())
+        return
     await state.set_state(CreateRequestFlow.waiting_amount)
     await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
 
 @router.message(StateFilter(CreateRequestFlow.waiting_phone), F.text == BACK_TEXT)
 async def request_back_from_phone(message: Message, state: FSMContext) -> None:
+    if (await state.get_data()).get("editing_field"):
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
+        await message.answer("Выберите, что изменить в заявке.", reply_markup=request_edit_keyboard())
+        return
     await state.set_state(CreateRequestFlow.waiting_full_name)
     await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
 
 
 @router.message(StateFilter(CreateRequestFlow.waiting_requisites), F.text == BACK_TEXT)
 async def request_back_from_requisites(message: Message, state: FSMContext) -> None:
+    if (await state.get_data()).get("editing_field"):
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
+        await message.answer("Выберите, что изменить в заявке.", reply_markup=request_edit_keyboard())
+        return
     await state.set_state(CreateRequestFlow.waiting_phone)
     await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
 
@@ -219,6 +313,11 @@ async def request_back_from_requisites(message: Message, state: FSMContext) -> N
 async def request_back_from_confirm(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_requisites)
     await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
+
+
+@router.message(StateFilter(CreateRequestFlow.waiting_edit_field), F.text == BACK_TEXT)
+async def request_back_from_edit_menu(message: Message, state: FSMContext) -> None:
+    await _show_request_confirmation(message, state)
 
 
 @router.message(Command("myid"))
@@ -337,6 +436,9 @@ async def request_set_direction(message: Message, state: FSMContext) -> None:
         )
         return
     await state.update_data(direction=direction)
+    if (await state.get_data()).get("editing_field"):
+        await _finish_request_field_edit(message, state)
+        return
     await state.set_state(CreateRequestFlow.waiting_amount)
     await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
@@ -348,6 +450,9 @@ async def request_set_amount(message: Message, state: FSMContext) -> None:
         await message.answer("Введите корректную сумму числом.")
         return
     await state.update_data(amount=amount)
+    if (await state.get_data()).get("editing_field"):
+        await _finish_request_field_edit(message, state)
+        return
     await state.set_state(CreateRequestFlow.waiting_full_name)
     await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
 
@@ -359,6 +464,9 @@ async def request_set_full_name(message: Message, state: FSMContext) -> None:
         await message.answer("Введите полное ФИО, минимум 5 символов.")
         return
     await state.update_data(request_full_name=full_name)
+    if (await state.get_data()).get("editing_field"):
+        await _finish_request_field_edit(message, state)
+        return
     await state.set_state(CreateRequestFlow.waiting_phone)
     await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
 
@@ -370,6 +478,9 @@ async def request_set_phone(message: Message, state: FSMContext) -> None:
         await message.answer("Введите корректный номер телефона, например +79991234567.")
         return
     await state.update_data(request_phone=phone)
+    if (await state.get_data()).get("editing_field"):
+        await _finish_request_field_edit(message, state)
+        return
     await state.set_state(CreateRequestFlow.waiting_requisites)
     await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
 
@@ -397,6 +508,9 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
 
     amount_send = float(amount_raw)
     await state.update_data(request_requisites=requisites)
+    if (await state.get_data()).get("editing_field"):
+        await _finish_request_field_edit(message, state)
+        return
     preview = await _build_request_preview_text(
         direction=direction,
         amount_send=amount_send,
@@ -415,14 +529,67 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     )
 
 
+@router.message(CreateRequestFlow.waiting_edit_field)
+async def request_choose_edit_field(message: Message, state: FSMContext) -> None:
+    choice = (message.text or "").strip()
+    data = await state.get_data()
+
+    if choice == EDIT_FIELD_DIRECTION_TEXT:
+        await state.update_data(editing_field="direction")
+        await state.set_state(CreateRequestFlow.waiting_direction)
+        await message.answer(
+            f"Текущее направление: {_format_direction(str(data.get('direction', '-')))}\nВыберите новое направление.",
+            reply_markup=direction_keyboard(available_directions()),
+        )
+        return
+
+    if choice == EDIT_FIELD_AMOUNT_TEXT:
+        await state.update_data(editing_field="amount")
+        await state.set_state(CreateRequestFlow.waiting_amount)
+        await message.answer(
+            f"Текущая сумма: {data.get('amount', '-')}\nВведите новую сумму отправки.",
+            reply_markup=_back_cancel_menu(),
+        )
+        return
+
+    if choice == EDIT_FIELD_FULL_NAME_TEXT:
+        await state.update_data(editing_field="request_full_name")
+        await state.set_state(CreateRequestFlow.waiting_full_name)
+        await message.answer(
+            f"Текущее ФИО: {data.get('request_full_name', '-')}\nВведите новое ФИО.",
+            reply_markup=_back_cancel_menu(),
+        )
+        return
+
+    if choice == EDIT_FIELD_PHONE_TEXT:
+        await state.update_data(editing_field="request_phone")
+        await state.set_state(CreateRequestFlow.waiting_phone)
+        await message.answer(
+            f"Текущий телефон: {data.get('request_phone', '-')}\nВведите новый номер телефона.",
+            reply_markup=_back_cancel_menu(),
+        )
+        return
+
+    if choice == EDIT_FIELD_REQUISITES_TEXT:
+        await state.update_data(editing_field="request_requisites")
+        await state.set_state(CreateRequestFlow.waiting_requisites)
+        await message.answer(
+            f"Текущие реквизиты: {data.get('request_requisites', '-')}\nОтправьте новые реквизиты.",
+            reply_markup=_back_cancel_menu(),
+        )
+        return
+
+    await message.answer("Выберите поле кнопкой ниже.", reply_markup=request_edit_keyboard())
+
+
 @router.message(CreateRequestFlow.waiting_confirm)
 async def request_confirm(message: Message, state: FSMContext) -> None:
     choice = (message.text or "").strip()
     if choice == EDIT_TEXT:
-        await state.set_state(CreateRequestFlow.waiting_direction)
+        await state.set_state(CreateRequestFlow.waiting_edit_field)
         await message.answer(
-            "Ок, изменяем заявку.\nШаг 1/5. Выберите направление кнопкой ниже.",
-            reply_markup=direction_keyboard(available_directions()),
+            "Выберите, что изменить в заявке.",
+            reply_markup=request_edit_keyboard(),
         )
         return
 

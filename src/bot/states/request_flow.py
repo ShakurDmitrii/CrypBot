@@ -12,6 +12,7 @@ class CreateRequestFlow(StatesGroup):
     waiting_full_name = State()
     waiting_phone = State()
     waiting_requisites = State()
+    waiting_edit_field = State()
     waiting_confirm = State()
 
 
