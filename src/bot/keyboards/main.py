@@ -15,7 +15,7 @@ def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> Rep
     keyboard: list[list[KeyboardButton]] = [
         [KeyboardButton(text="Курс"), KeyboardButton(text="Рассчитать")],
         [KeyboardButton(text="Создать заявку"), KeyboardButton(text="История")],
-        [KeyboardButton(text="Оферта"), KeyboardButton(text="AML проверка")],
+        [KeyboardButton(text="Оферта")],
     ]
 
     if _is_valid_telegram_webapp_url(mini_app_url):
