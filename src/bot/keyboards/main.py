@@ -14,7 +14,7 @@ def _is_valid_telegram_webapp_url(raw_url: str) -> bool:
 def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> ReplyKeyboardMarkup:
     keyboard: list[list[KeyboardButton]] = [
         [KeyboardButton(text="Курс"), KeyboardButton(text="Рассчитать")],
-        [KeyboardButton(text="Создать заявку"), KeyboardButton(text="История")],
+        [KeyboardButton(text="Создать заявку")],
         [KeyboardButton(text="Оферта")],
     ]
 
@@ -24,6 +24,7 @@ def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> Rep
         )
 
     if is_operator:
+        keyboard.append([KeyboardButton(text="История")])
         keyboard.append([KeyboardButton(text="Команды оператора")])
 
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

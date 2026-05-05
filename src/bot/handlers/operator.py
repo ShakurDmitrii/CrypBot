@@ -371,6 +371,15 @@ async def operator_status_start(message: Message, state: FSMContext) -> None:
     await message.answer("Введите номер заявки (ID из списка выше).", reply_markup=_cancel_menu())
 
 
+@router.message(F.text == "История")
+async def operator_history(message: Message) -> None:
+    if not _is_operator(message):
+        await message.answer("Действие доступно только оператору.")
+        return
+
+    await _send_requests_history(message)
+
+
 @router.message(OperatorFlow.waiting_request_id)
 async def operator_status_set_request_id(message: Message, state: FSMContext) -> None:
     if not _is_operator(message):
