@@ -1713,6 +1713,14 @@
       const queryTelegramId = Number(qs.get("telegram_id"));
       const fallbackTelegramId = Number.isInteger(queryTelegramId) && queryTelegramId > 0 ? queryTelegramId : null;
       const TELEGRAM_ID_STORAGE_KEY = "crypbot_telegram_id";
+      const TELEGRAM_USERNAME_STORAGE_KEY = "crypbot_username";
+
+      function normalizeUsernameValue(value) {
+        const clean = String(value || "").trim().replace(/^@+/, "");
+        return clean || null;
+      }
+
+      const fallbackUsername = normalizeUsernameValue(qs.get("username") || hashParams.get("username"));
 
       function safeParseUser(raw) {
         if (!raw) {
@@ -1749,26 +1757,38 @@
       function resolveTelegramIdentity() {
         const tgUser = tg?.initDataUnsafe?.user ?? null;
         if (tgUser?.id) {
-          return tgUser;
+          return {
+            ...tgUser,
+            username: normalizeUsernameValue(tgUser.username) || fallbackUsername,
+          };
         }
 
         const rawTgWebAppData = hashParams.get("tgWebAppData") || qs.get("tgWebAppData");
         const parsedFromTgInitData = parseUserFromInitData(tg?.initData || "");
         if (parsedFromTgInitData?.id) {
-          return parsedFromTgInitData;
+          return {
+            ...parsedFromTgInitData,
+            username: normalizeUsernameValue(parsedFromTgInitData.username) || fallbackUsername,
+          };
         }
         const parsedFromUrl = parseUserFromInitData(rawTgWebAppData || "");
         if (parsedFromUrl?.id) {
-          return parsedFromUrl;
+          return {
+            ...parsedFromUrl,
+            username: normalizeUsernameValue(parsedFromUrl.username) || fallbackUsername,
+          };
         }
 
         if (fallbackTelegramId) {
-          return { id: fallbackTelegramId };
+          return { id: fallbackTelegramId, username: fallbackUsername };
         }
 
         const storedId = Number(window.localStorage.getItem(TELEGRAM_ID_STORAGE_KEY) || "");
         if (Number.isInteger(storedId) && storedId > 0) {
-          return { id: storedId };
+          return {
+            id: storedId,
+            username: fallbackUsername || normalizeUsernameValue(window.localStorage.getItem(TELEGRAM_USERNAME_STORAGE_KEY)),
+          };
         }
 
         return null;
@@ -1778,10 +1798,13 @@
       if (resolvedIdentity?.id) {
         window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(resolvedIdentity.id));
       }
+      if (resolvedIdentity?.username) {
+        window.localStorage.setItem(TELEGRAM_USERNAME_STORAGE_KEY, resolvedIdentity.username);
+      }
 
       const state = {
         telegramId: resolvedIdentity?.id ?? null,
-        username: resolvedIdentity?.username ?? null,
+        username: normalizeUsernameValue(resolvedIdentity?.username),
         direction: null,
         rateCalcDirection: null,
         floatingCalcDirection: null,
@@ -1915,8 +1938,10 @@
         const resolvedId = Number(resolved?.id || "");
         if (Number.isInteger(resolvedId) && resolvedId > 0) {
           state.telegramId = resolvedId;
-          if (!state.username && resolved?.username) {
-            state.username = resolved.username;
+          const resolvedUsername = normalizeUsernameValue(resolved?.username);
+          if (resolvedUsername) {
+            state.username = resolvedUsername;
+            window.localStorage.setItem(TELEGRAM_USERNAME_STORAGE_KEY, resolvedUsername);
           }
           window.localStorage.setItem(TELEGRAM_ID_STORAGE_KEY, String(resolvedId));
           return resolvedId;
@@ -1927,6 +1952,9 @@
         const storedId = Number(window.localStorage.getItem(TELEGRAM_ID_STORAGE_KEY) || "");
         if (Number.isInteger(storedId) && storedId > 0) {
           state.telegramId = storedId;
+          if (!state.username) {
+            state.username = normalizeUsernameValue(window.localStorage.getItem(TELEGRAM_USERNAME_STORAGE_KEY));
+          }
           return storedId;
         }
         return null;

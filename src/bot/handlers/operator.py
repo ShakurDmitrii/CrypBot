@@ -69,13 +69,21 @@ def _mini_app_url_for_message(message: Message | None) -> str:
     base_url = settings.bot_mini_app_url.strip()
     if not base_url:
         return base_url
-    telegram_id = message.from_user.id if message and message.from_user else None
-    if telegram_id is None:
+    user = message.from_user if message else None
+    if user is None:
         return base_url
     parsed = urlparse(base_url)
     query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    query_pairs = [(key, value) for key, value in query_pairs if key != "telegram_id"]
-    query_pairs.append(("telegram_id", str(telegram_id)))
+    query_pairs = [
+        (key, value)
+        for key, value in query_pairs
+        if key not in {"telegram_id", "username", "full_name"}
+    ]
+    query_pairs.append(("telegram_id", str(user.id)))
+    if user.username:
+        query_pairs.append(("username", user.username))
+    if user.full_name:
+        query_pairs.append(("full_name", user.full_name))
     return urlunparse(parsed._replace(query=urlencode(query_pairs)))
 
 

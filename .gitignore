@@ -1,5 +1,22 @@
 __pycache__/
 *.pyc
+
+# Environment and local settings
 .env
+.env.*
+!.env.example
+*.local
+*.local.*
+local_settings.py
+settings.local.py
+
+# IDE/editor settings
+.idea/
+.vscode/
+*.code-workspace
+
+# Runtime artifacts
 docker-compose.yml
 bot.db
+bot.log
+*.log
