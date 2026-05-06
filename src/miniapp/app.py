@@ -15,9 +15,7 @@ from src.config import get_settings
 from src.db.models import AmlCheck, ExchangeRequest, RequestStatus, RequestStatusHistory, SupportMessage, User
 from src.db.session import SessionLocal
 from src.services.app_settings import (
-    MIN_DEAL_RUB_ALLOWED,
     MIN_DEAL_RUB_DEFAULT,
-    ROUND_STEP_RUB_ALLOWED,
     ROUND_STEP_RUB_DEFAULT,
     get_margin_percent,
     get_min_deal_rub,
@@ -291,16 +289,14 @@ async def offer() -> dict[str, str]:
 
 
 @app.get("/api/admin/settings/{telegram_id}")
-async def admin_settings(telegram_id: int) -> dict[str, int | list[int]]:
+async def admin_settings(telegram_id: int) -> dict[str, int]:
     _require_operator(telegram_id)
     async with SessionLocal() as session:
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     return {
         "min_deal_rub": int(min_deal_rub),
-        "allowed_min_deal_rub": list(MIN_DEAL_RUB_ALLOWED),
         "round_step_rub": int(round_step_rub),
-        "allowed_round_step_rub": list(ROUND_STEP_RUB_ALLOWED),
     }
 
 
@@ -308,16 +304,14 @@ async def admin_settings(telegram_id: int) -> dict[str, int | list[int]]:
 async def admin_update_settings(
     telegram_id: int,
     payload: AdminUpdateSettingsPayload,
-) -> dict[str, int | list[int]]:
+) -> dict[str, int]:
     _require_operator(telegram_id)
     if payload.min_deal_rub is None and payload.round_step_rub is None:
         raise HTTPException(status_code=400, detail="Nothing to update")
-    if payload.min_deal_rub is not None and payload.min_deal_rub not in MIN_DEAL_RUB_ALLOWED:
-        allowed = ", ".join(str(item) for item in MIN_DEAL_RUB_ALLOWED)
-        raise HTTPException(status_code=400, detail=f"min_deal_rub must be one of: {allowed}")
-    if payload.round_step_rub is not None and payload.round_step_rub not in ROUND_STEP_RUB_ALLOWED:
-        allowed = ", ".join(str(item) for item in ROUND_STEP_RUB_ALLOWED)
-        raise HTTPException(status_code=400, detail=f"round_step_rub must be one of: {allowed}")
+    if payload.min_deal_rub is not None and payload.min_deal_rub <= 0:
+        raise HTTPException(status_code=400, detail="min_deal_rub must be > 0")
+    if payload.round_step_rub is not None and payload.round_step_rub <= 0:
+        raise HTTPException(status_code=400, detail="round_step_rub must be > 0")
 
     async with SessionLocal() as session:
         try:
@@ -334,9 +328,7 @@ async def admin_update_settings(
 
     return {
         "min_deal_rub": int(min_deal_rub),
-        "allowed_min_deal_rub": list(MIN_DEAL_RUB_ALLOWED),
         "round_step_rub": int(round_step_rub),
-        "allowed_round_step_rub": list(ROUND_STEP_RUB_ALLOWED),
     }
 
 

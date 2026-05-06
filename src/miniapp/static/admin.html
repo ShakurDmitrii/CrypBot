@@ -370,9 +370,9 @@
           <button class="btn primary active" id="loadRequestsBtn" type="button">Заявки</button>
           <button class="btn primary" id="loadUsersBtn" type="button">Пользователи</button>
           <button class="btn primary" id="loadHistoryBtn" type="button">История статусов</button>
-          <button class="btn primary" id="loadChatBtn" type="button">Р§Р°С‚</button>
+          <button class="btn primary" id="loadChatBtn" type="button">Чат</button>
           <button class="btn primary" id="loadSettingsBtn" type="button">Настройки</button>
-          <button class="btn" id="backBtn" type="button">РќР° главную миниаппу</button>
+          <button class="btn" id="backBtn" type="button">На главную миниаппу</button>
         </div>
       </section>
 
@@ -382,7 +382,7 @@
         <div class="table-wrap" id="tableWrap"></div>
 
         <div class="request-editor hidden" id="requestEditorWrap">
-          <div class="editor-head" id="editorHead">Выберите заявку РІ С‚Р°Р±Р»РёС†Рµ</div>
+          <div class="editor-head" id="editorHead">Выберите заявку в таблице</div>
           <div class="editor-grid">
             <select class="select" id="editorStatus"></select>
             <input
@@ -390,7 +390,7 @@
               id="editorComment"
               type="text"
               maxlength="512"
-              placeholder="Комментарий Рє статусу (опционально)"
+              placeholder="Комментарий к статусу (опционально)"
             />
           </div>
           <div class="editor-actions">
@@ -406,7 +406,7 @@
               <div class="chat-users-list" id="adminChatUsersList"></div>
             </div>
             <div class="chat-dialog">
-              <div class="chat-dialog-title" id="adminChatTitle">Выберите пользователя СЃР»РµРІР°</div>
+              <div class="chat-dialog-title" id="adminChatTitle">Выберите пользователя слева</div>
               <div class="chat-messages" id="adminChatMessages"></div>
               <div class="chat-compose">
                 <input class="input" id="adminChatInput" type="text" maxlength="2000" placeholder="Сообщение пользователю..." />
@@ -436,13 +436,13 @@
       ];
 
       const STATUS_LABELS = {
-        all: "Р’СЃРµ",
+        all: "Все",
         new: "Новая",
         waiting_payment: "Ожидает оплату",
         payment_received: "Оплата получена",
-        processing: "Р’ РѕР±СЂР°Р±РѕС‚РєРµ",
-        done: "Р—Р°РІРµСЂС€РµРЅР°",
-        canceled: "РћС‚РјРµРЅРµРЅР°",
+        processing: "В обработке",
+        done: "Завершена",
+        canceled: "Отменена",
         disputed: "Спор",
       };
 
@@ -457,9 +457,9 @@
         setText("#loadRequestsBtn", "Заявки");
         setText("#loadUsersBtn", "Пользователи");
         setText("#loadHistoryBtn", "История статусов");
-        setText("#loadChatBtn", "Р§Р°С‚");
+        setText("#loadChatBtn", "Чат");
         setText("#loadSettingsBtn", "Настройки");
-        setText("#backBtn", "РќР° главную миниаппу");
+        setText("#backBtn", "На главную миниаппу");
       }
 
       function parseTelegramIdFromQuery() {
@@ -647,7 +647,7 @@
 
       function renderTable(headers, rows) {
         if (!rows.length) {
-          tableWrap.innerHTML = "<div class='status'>РќРµС‚ данных.</div>";
+          tableWrap.innerHTML = "<div class='status'>Нет данных.</div>";
           return;
         }
         const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
@@ -728,7 +728,7 @@
 
       function renderRequestsTable(items) {
         if (!items.length) {
-          tableWrap.innerHTML = "<div class='status'>РќРµС‚ заявок под текущий С„РёР»СЊС‚СЂ.</div>";
+          tableWrap.innerHTML = "<div class='status'>Нет заявок под текущий фильтр.</div>";
           return;
         }
 
@@ -805,7 +805,7 @@
 
         renderRequestsTable(filtered);
         renderRequestEditor();
-        setStatus(`Заявок: ${filtered.length} (РёР· ${state.requests.length}).`);
+        setStatus(`Заявок: ${filtered.length} (из ${state.requests.length}).`);
       }
 
       function renderUsersView(items) {
@@ -841,46 +841,36 @@
 
       function renderSettingsView(settingsData) {
         setView("settings");
-        const minDealOptions = (settingsData.allowed_min_deal_rub || [])
-          .map((value) => {
-            const selected = Number(value) === Number(settingsData.min_deal_rub) ? " selected" : "";
-            return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} RUB</option>`;
-          })
-          .join("");
-        const roundStepOptions = (settingsData.allowed_round_step_rub || [])
-          .map((value) => {
-            const selected = Number(value) === Number(settingsData.round_step_rub) ? " selected" : "";
-            return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} RUB</option>`;
-          })
-          .join("");
+        const minDealRub = Number(settingsData.min_deal_rub || 0);
+        const roundStepRub = Number(settingsData.round_step_rub || 0);
+
         contextToolsEl.innerHTML = `
           <div class="panel" style="margin-top:0">
             <div class="editor-head">Настройки оператора</div>
-            <label class="label" for="settingsMinDealRub">Min deal (RUB)</label>
-            <select class="select" id="settingsMinDealRub">${minDealOptions}</select>
-            <label class="label" for="settingsRoundStepRub">РЁР°Рі автоокругления RUB</label>
-            <select class="select" id="settingsRoundStepRub">${roundStepOptions}</select>
+
+            <label class="label" for="settingsMinDealRub">Минимальная сделка (RUB)</label>
+            <input class="input" id="settingsMinDealRub" type="number" min="1" step="1" value="${escapeHtml(minDealRub)}" />
+
+            <label class="label" for="settingsRoundStepRub">Шаг автоокругления RUB</label>
+            <input class="input" id="settingsRoundStepRub" type="number" min="1" step="1" value="${escapeHtml(roundStepRub)}" />
+
             <div class="buttons">
               <button class="btn primary" id="saveSettingsBtn" type="button">Сохранить</button>
             </div>
-            <p class="hint">Выберите минимальную сделку Рё С€Р°Рі округления РґР»СЏ рублевой стороны.</p>
+            <p class="hint">Введите минимальную сделку и шаг округления для рублевой стороны.</p>
           </div>
         `;
+
         document.getElementById("saveSettingsBtn").addEventListener("click", () => {
-          saveSettings().catch((e) => setStatus(`РћС€РёР±РєР° сохранения настроек: ${e.message}`, true));
+          saveSettings().catch((e) => setStatus(`Ошибка сохранения настроек: ${e.message}`, true));
         });
-        const minDealLabelEl = contextToolsEl.querySelector('label[for="settingsMinDealRub"]');
-        if (minDealLabelEl) {
-          minDealLabelEl.textContent = "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 (RUB)";
-        }
-        setStatus(
-          `Текущие настройки: минимум ${settingsData.min_deal_rub} RUB, округление ${settingsData.round_step_rub} RUB.`
-        );
+
+        setStatus(`Текущие настройки: минимум ${minDealRub} RUB, округление ${roundStepRub} RUB.`);
       }
 
       function renderAdminChatUsers() {
         if (!state.chatUsers.length) {
-          adminChatUsersList.innerHTML = "<div class='muted'>Пока РЅРµС‚ диалогов.</div>";
+          adminChatUsersList.innerHTML = "<div class='muted'>Пока нет диалогов.</div>";
           return;
         }
         adminChatUsersList.innerHTML = state.chatUsers
@@ -892,7 +882,7 @@
               <button class="chat-user-btn${selected ? " active" : ""}" type="button" data-chat-user-id="${escapeHtml(user.telegram_id)}">
                 <div>${escapeHtml(normalizeUsername(user.username))}</div>
                 <div class="chat-user-meta">${escapeHtml(user.full_name || "-")} • id:${escapeHtml(user.telegram_id)}</div>
-                <div class="chat-user-meta">${escapeHtml(user.last_message || "Р‘РµР· сообщений")}${escapeHtml(unreadBadge)}</div>
+                <div class="chat-user-meta">${escapeHtml(user.last_message || "Без сообщений")}${escapeHtml(unreadBadge)}</div>
               </button>
             `;
           })
@@ -905,7 +895,7 @@
             }
             state.selectedChatUserId = telegramId;
             loadAdminChatConversation(telegramId, false).catch((e) =>
-              setStatus(`РћС€РёР±РєР° загрузки переписки: ${e.message}`, true)
+              setStatus(`Ошибка загрузки переписки: ${e.message}`, true)
             );
           });
         });
@@ -913,7 +903,7 @@
 
       function renderAdminChatMessages() {
         if (!state.chatMessages.length) {
-          adminChatMessages.innerHTML = "<div class='muted'>Сообщений пока РЅРµС‚.</div>";
+          adminChatMessages.innerHTML = "<div class='muted'>Сообщений пока нет.</div>";
           return;
         }
         adminChatMessages.innerHTML = state.chatMessages
@@ -996,7 +986,7 @@
       async function sendAdminChatMessage() {
         const targetTelegramId = Number(state.selectedChatUserId || 0);
         if (!targetTelegramId) {
-          setStatus("Сначала выберите диалог СЃР»РµРІР°.", true);
+          setStatus("Сначала выберите диалог слева.", true);
           return;
         }
         const message = String(adminChatInput.value || "").trim();
@@ -1023,8 +1013,8 @@
         if (state.selectedChatUserId) {
           await loadAdminChatConversation(state.selectedChatUserId, false);
         } else {
-          adminChatTitle.textContent = "Выберите пользователя СЃР»РµРІР°";
-          adminChatMessages.innerHTML = "<div class='muted'>РќРµС‚ сообщений.</div>";
+          adminChatTitle.textContent = "Выберите пользователя слева";
+          adminChatMessages.innerHTML = "<div class='muted'>Нет сообщений.</div>";
         }
         startAdminChatPolling();
       }
@@ -1071,21 +1061,25 @@
         if (!state.accessGranted) {
           return;
         }
-        const minDealSelect = document.getElementById("settingsMinDealRub");
-        const roundStepSelect = document.getElementById("settingsRoundStepRub");
-        if (!minDealSelect || !roundStepSelect) {
+
+        const minDealInput = document.getElementById("settingsMinDealRub");
+        const roundStepInput = document.getElementById("settingsRoundStepRub");
+        if (!minDealInput || !roundStepInput) {
           return;
         }
-        const minDealRub = Number(minDealSelect.value);
-        const roundStepRub = Number(roundStepSelect.value);
-        if (!Number.isFinite(minDealRub)) {
+
+        const minDealRub = Number(String(minDealInput.value || "").trim());
+        const roundStepRub = Number(String(roundStepInput.value || "").trim());
+
+        if (!Number.isInteger(minDealRub) || minDealRub <= 0) {
           setStatus("Некорректное значение минимальной сделки.", true);
           return;
         }
-        if (!Number.isFinite(roundStepRub)) {
-          setStatus("Некорректное значение С€Р°РіР° округления.", true);
+        if (!Number.isInteger(roundStepRub) || roundStepRub <= 0) {
+          setStatus("Некорректное значение шага округления.", true);
           return;
         }
+
         setStatus("Сохраняю настройки...");
         const data = await api(`/api/admin/settings/${state.telegramId}`, {
           method: "PATCH",
@@ -1094,13 +1088,14 @@
             round_step_rub: roundStepRub,
           }),
         });
+
         state.appSettings = data;
         renderSettingsView(data);
       }
 
       async function applySelectedRequestStatus() {
         if (!state.accessGranted) {
-          setStatus("Доступ РЅРµ предоставлен.", true);
+          setStatus("Доступ не предоставлен.", true);
           return;
         }
         const selected = state.requests.find((item) => Number(item.id) === Number(state.selectedRequestId));
@@ -1126,12 +1121,12 @@
 
       async function deleteSelectedRequest() {
         if (!state.accessGranted) {
-          setStatus("Доступ РЅРµ предоставлен.", true);
+          setStatus("Доступ не предоставлен.", true);
           return;
         }
         const selected = state.requests.find((item) => Number(item.id) === Number(state.selectedRequestId));
         if (!selected) {
-          setStatus("Сначала выберите заявку РІ С‚Р°Р±Р»РёС†Рµ.", true);
+          setStatus("Сначала выберите заявку в таблице.", true);
           return;
         }
         const confirmed = window.confirm(`Удалить заявку #${selected.id}? Это действие необратимо.`);
@@ -1148,35 +1143,35 @@
       }
 
       document.getElementById("loadUsersBtn").addEventListener("click", () => {
-        loadUsers().catch((e) => setStatus(`РћС€РёР±РєР° загрузки пользователей: ${e.message}`, true));
+        loadUsers().catch((e) => setStatus(`Ошибка загрузки пользователей: ${e.message}`, true));
       });
       document.getElementById("loadRequestsBtn").addEventListener("click", () => {
-        loadRequests().catch((e) => setStatus(`РћС€РёР±РєР° загрузки заявок: ${e.message}`, true));
+        loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
       });
       document.getElementById("loadHistoryBtn").addEventListener("click", () => {
-        loadHistory().catch((e) => setStatus(`РћС€РёР±РєР° загрузки истории: ${e.message}`, true));
+        loadHistory().catch((e) => setStatus(`Ошибка загрузки истории: ${e.message}`, true));
       });
       document.getElementById("loadChatBtn").addEventListener("click", () => {
-        loadChatView().catch((e) => setStatus(`РћС€РёР±РєР° загрузки С‡Р°С‚Р°: ${e.message}`, true));
+        loadChatView().catch((e) => setStatus(`Ошибка загрузки чата: ${e.message}`, true));
       });
       document.getElementById("loadSettingsBtn").addEventListener("click", () => {
-        loadSettings().catch((e) => setStatus(`РћС€РёР±РєР° загрузки настроек: ${e.message}`, true));
+        loadSettings().catch((e) => setStatus(`Ошибка загрузки настроек: ${e.message}`, true));
       });
       document.getElementById("applyStatusBtn").addEventListener("click", () => {
-        applySelectedRequestStatus().catch((e) => setStatus(`РћС€РёР±РєР° смены статуса: ${e.message}`, true));
+        applySelectedRequestStatus().catch((e) => setStatus(`Ошибка смены статуса: ${e.message}`, true));
       });
       document.getElementById("deleteRequestBtn").addEventListener("click", () => {
-        deleteSelectedRequest().catch((e) => setStatus(`РћС€РёР±РєР° удаления заявки: ${e.message}`, true));
+        deleteSelectedRequest().catch((e) => setStatus(`Ошибка удаления заявки: ${e.message}`, true));
       });
       adminChatSendBtn.addEventListener("click", () => {
-        sendAdminChatMessage().catch((e) => setStatus(`РћС€РёР±РєР° отправки сообщения: ${e.message}`, true));
+        sendAdminChatMessage().catch((e) => setStatus(`Ошибка отправки сообщения: ${e.message}`, true));
       });
       adminChatInput.addEventListener("keydown", (event) => {
         if (event.key !== "Enter") {
           return;
         }
         event.preventDefault();
-        sendAdminChatMessage().catch((e) => setStatus(`РћС€РёР±РєР° отправки сообщения: ${e.message}`, true));
+        sendAdminChatMessage().catch((e) => setStatus(`Ошибка отправки сообщения: ${e.message}`, true));
       });
       document.getElementById("backBtn").addEventListener("click", () => {
         window.location.href = "/";
@@ -1186,7 +1181,7 @@
 
       checkAccess().then(() => {
         if (state.accessGranted) {
-          loadRequests().catch((e) => setStatus(`РћС€РёР±РєР° загрузки заявок: ${e.message}`, true));
+          loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
         }
       });
     </script>

@@ -6,10 +6,10 @@ from src.db.models import AppSetting
 MARGIN_PERCENT_KEY = "bot_margin_percent"
 MIN_DEAL_RUB_KEY = "min_deal_rub"
 MIN_DEAL_RUB_DEFAULT = 8000
-MIN_DEAL_RUB_ALLOWED = (5000, 8000, 10000, 15000, 20000, 30000, 50000, 100000)
+MIN_DEAL_RUB_MIN = 1
 ROUND_STEP_RUB_KEY = "round_step_rub"
 ROUND_STEP_RUB_DEFAULT = 500
-ROUND_STEP_RUB_ALLOWED = (100, 200, 250, 300, 350, 500, 1000)
+ROUND_STEP_RUB_MIN = 1
 
 
 async def get_margin_percent(session: AsyncSession, default_margin_percent: float) -> float:
@@ -50,15 +50,14 @@ async def get_min_deal_rub(
         value = int(row.value)
     except ValueError:
         return default_value
-    if value not in MIN_DEAL_RUB_ALLOWED:
+    if value < MIN_DEAL_RUB_MIN:
         return default_value
     return value
 
 
 async def set_min_deal_rub(session: AsyncSession, min_deal_rub: int) -> int:
-    if min_deal_rub not in MIN_DEAL_RUB_ALLOWED:
-        allowed = ", ".join(str(item) for item in MIN_DEAL_RUB_ALLOWED)
-        raise ValueError(f"min_deal_rub must be one of: {allowed}")
+    if min_deal_rub < MIN_DEAL_RUB_MIN:
+        raise ValueError(f"min_deal_rub must be >= {MIN_DEAL_RUB_MIN}")
 
     row = await session.scalar(select(AppSetting).where(AppSetting.key == MIN_DEAL_RUB_KEY))
     value = str(min_deal_rub)
@@ -81,15 +80,14 @@ async def get_round_step_rub(
         value = int(row.value)
     except ValueError:
         return default_value
-    if value not in ROUND_STEP_RUB_ALLOWED:
+    if value < ROUND_STEP_RUB_MIN:
         return default_value
     return value
 
 
 async def set_round_step_rub(session: AsyncSession, round_step_rub: int) -> int:
-    if round_step_rub not in ROUND_STEP_RUB_ALLOWED:
-        allowed = ", ".join(str(item) for item in ROUND_STEP_RUB_ALLOWED)
-        raise ValueError(f"round_step_rub must be one of: {allowed}")
+    if round_step_rub < ROUND_STEP_RUB_MIN:
+        raise ValueError(f"round_step_rub must be >= {ROUND_STEP_RUB_MIN}")
 
     row = await session.scalar(select(AppSetting).where(AppSetting.key == ROUND_STEP_RUB_KEY))
     value = str(round_step_rub)
