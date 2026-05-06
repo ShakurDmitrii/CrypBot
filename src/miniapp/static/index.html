@@ -2126,6 +2126,9 @@
         const minAmount = Number(data.min_amount_send || 0);
         if (Number.isFinite(minAmount) && minAmount > 0) {
           state.minAmountByDirection[direction] = minAmount;
+          if (direction === state.direction) {
+            renderQuickChips();
+          }
         }
         if (Number.isFinite(Number(data.min_deal_rub))) {
           state.minDealRub = Number(data.min_deal_rub);
@@ -2480,14 +2483,29 @@
         });
       }
 
+      function quickChipDigits(meta) {
+        return meta.send === "RUB" ? 0 : 2;
+      }
+
+      function buildQuickAmounts(direction, meta) {
+        const minAmount = Number(state.minAmountByDirection[direction] || 0);
+        if (!Number.isFinite(minAmount) || minAmount <= 0) {
+          return meta.quick;
+        }
+        const digits = quickChipDigits(meta);
+        return [minAmount, minAmount * 1.5, minAmount * 2].map((amount) =>
+          Number(amount.toFixed(digits))
+        );
+      }
+
       function renderQuickChips() {
         const meta = getDirectionMeta(state.direction);
         els.quickChips.innerHTML = "";
-        meta.quick.forEach((amount) => {
+        buildQuickAmounts(state.direction, meta).forEach((amount) => {
           const chip = document.createElement("button");
           chip.className = "chip";
           chip.type = "button";
-          chip.textContent = `${formatAmount(amount, 0)} ${meta.send}`;
+          chip.textContent = `${formatAmount(amount, quickChipDigits(meta))} ${meta.send}`;
           chip.addEventListener("click", () => {
             els.sendAmount.value = String(amount);
           });
