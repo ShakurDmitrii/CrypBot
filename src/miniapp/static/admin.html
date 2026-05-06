@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>НЕБО • Окно оператора</title>
+    <title>РќР•Р‘Рћ вЂў РћРєРЅРѕ РѕРїРµСЂР°С‚РѕСЂР°</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
@@ -364,25 +364,25 @@
   <body>
     <main class="app">
       <section class="header">
-        <h1 class="title">Окно оператора</h1>
-        <div class="meta" id="meta">Проверка доступа...</div>
+        <h1 class="title">РћРєРЅРѕ РѕРїРµСЂР°С‚РѕСЂР°</h1>
+        <div class="meta" id="meta">РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїР°...</div>
         <div class="toolbar">
-          <button class="btn primary active" id="loadRequestsBtn" type="button">Заявки</button>
-          <button class="btn primary" id="loadUsersBtn" type="button">Пользователи</button>
-          <button class="btn primary" id="loadHistoryBtn" type="button">История статусов</button>
-          <button class="btn primary" id="loadChatBtn" type="button">Чат</button>
-          <button class="btn primary" id="loadSettingsBtn" type="button">Настройки</button>
-          <button class="btn" id="backBtn" type="button">На главную миниаппу</button>
+          <button class="btn primary active" id="loadRequestsBtn" type="button">Р—Р°СЏРІРєРё</button>
+          <button class="btn primary" id="loadUsersBtn" type="button">РџРѕР»СЊР·РѕРІР°С‚РµР»Рё</button>
+          <button class="btn primary" id="loadHistoryBtn" type="button">РСЃС‚РѕСЂРёСЏ СЃС‚Р°С‚СѓСЃРѕРІ</button>
+          <button class="btn primary" id="loadChatBtn" type="button">Р§Р°С‚</button>
+          <button class="btn primary" id="loadSettingsBtn" type="button">РќР°СЃС‚СЂРѕР№РєРё</button>
+          <button class="btn" id="backBtn" type="button">РќР° РіР»Р°РІРЅСѓСЋ РјРёРЅРёР°РїРїСѓ</button>
         </div>
       </section>
 
       <section class="panel">
-        <div class="status" id="status">Ожидание...</div>
+        <div class="status" id="status">РћР¶РёРґР°РЅРёРµ...</div>
         <div class="tools" id="contextTools"></div>
         <div class="table-wrap" id="tableWrap"></div>
 
         <div class="request-editor hidden" id="requestEditorWrap">
-          <div class="editor-head" id="editorHead">Выберите заявку в таблице</div>
+          <div class="editor-head" id="editorHead">Р’С‹Р±РµСЂРёС‚Рµ Р·Р°СЏРІРєСѓ РІ С‚Р°Р±Р»РёС†Рµ</div>
           <div class="editor-grid">
             <select class="select" id="editorStatus"></select>
             <input
@@ -390,27 +390,27 @@
               id="editorComment"
               type="text"
               maxlength="512"
-              placeholder="Комментарий к статусу (опционально)"
+              placeholder="РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє СЃС‚Р°С‚СѓСЃСѓ (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)"
             />
           </div>
           <div class="editor-actions">
-            <button class="btn primary" id="applyStatusBtn" type="button">Сохранить статус</button>
-            <button class="btn danger" id="deleteRequestBtn" type="button">Удалить заявку</button>
+            <button class="btn primary" id="applyStatusBtn" type="button">РЎРѕС…СЂР°РЅРёС‚СЊ СЃС‚Р°С‚СѓСЃ</button>
+            <button class="btn danger" id="deleteRequestBtn" type="button">РЈРґР°Р»РёС‚СЊ Р·Р°СЏРІРєСѓ</button>
           </div>
         </div>
 
         <div class="chat-workspace hidden" id="chatWorkspace">
           <div class="chat-layout">
             <div class="chat-users">
-              <div class="chat-dialog-title">Диалоги</div>
+              <div class="chat-dialog-title">Р”РёР°Р»РѕРіРё</div>
               <div class="chat-users-list" id="adminChatUsersList"></div>
             </div>
             <div class="chat-dialog">
-              <div class="chat-dialog-title" id="adminChatTitle">Выберите пользователя слева</div>
+              <div class="chat-dialog-title" id="adminChatTitle">Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃР»РµРІР°</div>
               <div class="chat-messages" id="adminChatMessages"></div>
               <div class="chat-compose">
-                <input class="input" id="adminChatInput" type="text" maxlength="2000" placeholder="Сообщение пользователю..." />
-                <button class="btn primary" id="adminChatSendBtn" type="button">Отправить</button>
+                <input class="input" id="adminChatInput" type="text" maxlength="2000" placeholder="РЎРѕРѕР±С‰РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ..." />
+                <button class="btn primary" id="adminChatSendBtn" type="button">РћС‚РїСЂР°РІРёС‚СЊ</button>
               </div>
             </div>
           </div>
@@ -436,14 +436,14 @@
       ];
 
       const STATUS_LABELS = {
-        all: "Все",
-        new: "Новая",
-        waiting_payment: "Ожидает оплату",
-        payment_received: "Оплата получена",
-        processing: "В обработке",
-        done: "Завершена",
-        canceled: "Отменена",
-        disputed: "Спор",
+        all: "Р’СЃРµ",
+        new: "РќРѕРІР°СЏ",
+        waiting_payment: "РћР¶РёРґР°РµС‚ РѕРїР»Р°С‚Сѓ",
+        payment_received: "РћРїР»Р°С‚Р° РїРѕР»СѓС‡РµРЅР°",
+        processing: "Р’ РѕР±СЂР°Р±РѕС‚РєРµ",
+        done: "Р—Р°РІРµСЂС€РµРЅР°",
+        canceled: "РћС‚РјРµРЅРµРЅР°",
+        disputed: "РЎРїРѕСЂ",
       };
 
       function localizeAdminStaticTexts() {
@@ -453,13 +453,13 @@
             node.textContent = text;
           }
         };
-        setText(".title", "Окно оператора");
-        setText("#loadRequestsBtn", "Заявки");
-        setText("#loadUsersBtn", "Пользователи");
-        setText("#loadHistoryBtn", "История статусов");
-        setText("#loadChatBtn", "Чат");
-        setText("#loadSettingsBtn", "Настройки");
-        setText("#backBtn", "На главную миниаппу");
+        setText(".title", "РћРєРЅРѕ РѕРїРµСЂР°С‚РѕСЂР°");
+        setText("#loadRequestsBtn", "Р—Р°СЏРІРєРё");
+        setText("#loadUsersBtn", "РџРѕР»СЊР·РѕРІР°С‚РµР»Рё");
+        setText("#loadHistoryBtn", "РСЃС‚РѕСЂРёСЏ СЃС‚Р°С‚СѓСЃРѕРІ");
+        setText("#loadChatBtn", "Р§Р°С‚");
+        setText("#loadSettingsBtn", "РќР°СЃС‚СЂРѕР№РєРё");
+        setText("#backBtn", "РќР° РіР»Р°РІРЅСѓСЋ РјРёРЅРёР°РїРїСѓ");
       }
 
       function parseTelegramIdFromQuery() {
@@ -481,7 +481,7 @@
         if (fromQuery) {
           return fromQuery;
         }
-        const raw = prompt("Введите Telegram ID оператора");
+        const raw = prompt("Р’РІРµРґРёС‚Рµ Telegram ID РѕРїРµСЂР°С‚РѕСЂР°");
         if (!raw) {
           return null;
         }
@@ -626,28 +626,28 @@
 
       async function checkAccess() {
         if (!state.telegramId) {
-          metaEl.textContent = "Не удалось определить Telegram ID.";
-          setStatus("Доступ не предоставлен.", true);
+          metaEl.textContent = "РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ Telegram ID.";
+          setStatus("Р”РѕСЃС‚СѓРї РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅ.", true);
           return;
         }
         try {
           const data = await api(`/api/me/${state.telegramId}`);
           if (!data.is_operator) {
             metaEl.textContent = `Telegram ID: ${state.telegramId}`;
-            setStatus("Доступ запрещен: вы не оператор.", true);
+            setStatus("Р”РѕСЃС‚СѓРї Р·Р°РїСЂРµС‰РµРЅ: РІС‹ РЅРµ РѕРїРµСЂР°С‚РѕСЂ.", true);
             return;
           }
           state.accessGranted = true;
-          metaEl.textContent = `Telegram ID: ${state.telegramId} • Роль: оператор`;
-          setStatus("Доступ подтвержден.");
+          metaEl.textContent = `Telegram ID: ${state.telegramId} вЂў Р РѕР»СЊ: РѕРїРµСЂР°С‚РѕСЂ`;
+          setStatus("Р”РѕСЃС‚СѓРї РїРѕРґС‚РІРµСЂР¶РґРµРЅ.");
         } catch (e) {
-          setStatus(`Ошибка проверки доступа: ${e.message}`, true);
+          setStatus(`РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїР°: ${e.message}`, true);
         }
       }
 
       function renderTable(headers, rows) {
         if (!rows.length) {
-          tableWrap.innerHTML = "<div class='status'>Нет данных.</div>";
+          tableWrap.innerHTML = "<div class='status'>РќРµС‚ РґР°РЅРЅС‹С….</div>";
           return;
         }
         const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
@@ -669,8 +669,8 @@
         const counters = buildRequestCounters(items);
         contextToolsEl.innerHTML = `
           <div class="search-row">
-            <input class="input" id="requestSearchInput" type="text" placeholder="Поиск по ID, Telegram ID, username, статусу, направлению" value="${escapeHtml(state.requestSearch)}" />
-            <button class="btn" id="clearRequestSearchBtn" type="button">Очистить</button>
+            <input class="input" id="requestSearchInput" type="text" placeholder="РџРѕРёСЃРє РїРѕ ID, Telegram ID, username, СЃС‚Р°С‚СѓСЃСѓ, РЅР°РїСЂР°РІР»РµРЅРёСЋ" value="${escapeHtml(state.requestSearch)}" />
+            <button class="btn" id="clearRequestSearchBtn" type="button">РћС‡РёСЃС‚РёС‚СЊ</button>
           </div>
           <div class="chips" id="statusChips"></div>
         `;
@@ -728,19 +728,19 @@
 
       function renderRequestsTable(items) {
         if (!items.length) {
-          tableWrap.innerHTML = "<div class='status'>Нет заявок под текущий фильтр.</div>";
+          tableWrap.innerHTML = "<div class='status'>РќРµС‚ Р·Р°СЏРІРѕРє РїРѕРґ С‚РµРєСѓС‰РёР№ С„РёР»СЊС‚СЂ.</div>";
           return;
         }
 
         const headers = [
-          "Заявка",
-          "Пользователь",
-          "Направление",
-          "Сумма отправки",
-          "Сумма получения",
-          "Курс",
-          "Статус",
-          "Обновлено",
+          "Р—Р°СЏРІРєР°",
+          "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ",
+          "РќР°РїСЂР°РІР»РµРЅРёРµ",
+          "РЎСѓРјРјР° РѕС‚РїСЂР°РІРєРё",
+          "РЎСѓРјРјР° РїРѕР»СѓС‡РµРЅРёСЏ",
+          "РљСѓСЂСЃ",
+          "РЎС‚Р°С‚СѓСЃ",
+          "РћР±РЅРѕРІР»РµРЅРѕ",
         ];
 
         const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
@@ -786,7 +786,7 @@
           return;
         }
         requestEditorWrap.classList.remove("hidden");
-        editorHead.textContent = `Заявка #${selected.id} • ${selected.direction} • ${normalizeUsername(selected.username)}`;
+        editorHead.textContent = `Р—Р°СЏРІРєР° #${selected.id} вЂў ${selected.direction} вЂў ${normalizeUsername(selected.username)}`;
         editorStatus.value = REQUEST_STATUSES.includes(String(selected.status)) ? String(selected.status) : "new";
         editorComment.value = selected.status_comment || "";
       }
@@ -805,7 +805,7 @@
 
         renderRequestsTable(filtered);
         renderRequestEditor();
-        setStatus(`Заявок: ${filtered.length} (из ${state.requests.length}).`);
+        setStatus(`Р—Р°СЏРІРѕРє: ${filtered.length} (РёР· ${state.requests.length}).`);
       }
 
       function renderUsersView(items) {
@@ -819,8 +819,8 @@
           u.requests_count,
           formatDate(u.created_at),
         ]);
-        renderTable(["Telegram ID", "Username", "ФИО", "Телефон", "Заявок", "Создан"], rows);
-        setStatus(`Пользователей: ${rows.length}.`);
+        renderTable(["Telegram ID", "Username", "Р¤РРћ", "РўРµР»РµС„РѕРЅ", "Р—Р°СЏРІРѕРє", "РЎРѕР·РґР°РЅ"], rows);
+        setStatus(`РџРѕР»СЊР·РѕРІР°С‚РµР»РµР№: ${rows.length}.`);
       }
 
       function renderHistoryView(items) {
@@ -835,16 +835,16 @@
           h.telegram_id || "-",
           formatDate(h.created_at),
         ]);
-        renderTable(["Статус", "Комментарий", "Кем изменено", "Направление", "Username", "Telegram ID", "Когда"], rows);
-        setStatus(`Событий в истории: ${rows.length}.`);
+        renderTable(["РЎС‚Р°С‚СѓСЃ", "РљРѕРјРјРµРЅС‚Р°СЂРёР№", "РљРµРј РёР·РјРµРЅРµРЅРѕ", "РќР°РїСЂР°РІР»РµРЅРёРµ", "Username", "Telegram ID", "РљРѕРіРґР°"], rows);
+        setStatus(`РЎРѕР±С‹С‚РёР№ РІ РёСЃС‚РѕСЂРёРё: ${rows.length}.`);
       }
 
       function renderSettingsView(settingsData) {
         setView("settings");
-        const minDealOptions = (settingsData.allowed_min_deal_usdt || [])
+        const minDealOptions = (settingsData.allowed_min_deal_rub || [])
           .map((value) => {
-            const selected = Number(value) === Number(settingsData.min_deal_usdt) ? " selected" : "";
-            return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} USDT</option>`;
+            const selected = Number(value) === Number(settingsData.min_deal_rub) ? " selected" : "";
+            return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} RUB</option>`;
           })
           .join("");
         const roundStepOptions = (settingsData.allowed_round_step_rub || [])
@@ -855,40 +855,44 @@
           .join("");
         contextToolsEl.innerHTML = `
           <div class="panel" style="margin-top:0">
-            <div class="editor-head">Настройки оператора</div>
-            <label class="label" for="settingsMinDealUsdt">Минимальная сделка (USDT)</label>
-            <select class="select" id="settingsMinDealUsdt">${minDealOptions}</select>
-            <label class="label" for="settingsRoundStepRub">Шаг автоокругления RUB</label>
+            <div class="editor-head">РќР°СЃС‚СЂРѕР№РєРё РѕРїРµСЂР°С‚РѕСЂР°</div>
+            <label class="label" for="settingsMinDealRub">Min deal (RUB)</label>
+            <select class="select" id="settingsMinDealRub">${minDealOptions}</select>
+            <label class="label" for="settingsRoundStepRub">РЁР°Рі Р°РІС‚РѕРѕРєСЂСѓРіР»РµРЅРёСЏ RUB</label>
             <select class="select" id="settingsRoundStepRub">${roundStepOptions}</select>
             <div class="buttons">
-              <button class="btn primary" id="saveSettingsBtn" type="button">Сохранить</button>
+              <button class="btn primary" id="saveSettingsBtn" type="button">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
             </div>
-            <p class="hint">Выберите минимальную сделку и шаг округления для рублевой стороны.</p>
+            <p class="hint">Р’С‹Р±РµСЂРёС‚Рµ РјРёРЅРёРјР°Р»СЊРЅСѓСЋ СЃРґРµР»РєСѓ Рё С€Р°Рі РѕРєСЂСѓРіР»РµРЅРёСЏ РґР»СЏ СЂСѓР±Р»РµРІРѕР№ СЃС‚РѕСЂРѕРЅС‹.</p>
           </div>
         `;
         document.getElementById("saveSettingsBtn").addEventListener("click", () => {
-          saveSettings().catch((e) => setStatus(`Ошибка сохранения настроек: ${e.message}`, true));
+          saveSettings().catch((e) => setStatus(`РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РЅР°СЃС‚СЂРѕРµРє: ${e.message}`, true));
         });
+        const minDealLabelEl = contextToolsEl.querySelector('label[for="settingsMinDealRub"]');
+        if (minDealLabelEl) {
+          minDealLabelEl.textContent = "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 (RUB)";
+        }
         setStatus(
-          `Текущие настройки: минимум ${settingsData.min_deal_usdt} USDT, округление ${settingsData.round_step_rub} RUB.`
+          `РўРµРєСѓС‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё: РјРёРЅРёРјСѓРј ${settingsData.min_deal_rub} RUB, РѕРєСЂСѓРіР»РµРЅРёРµ ${settingsData.round_step_rub} RUB.`
         );
       }
 
       function renderAdminChatUsers() {
         if (!state.chatUsers.length) {
-          adminChatUsersList.innerHTML = "<div class='muted'>Пока нет диалогов.</div>";
+          adminChatUsersList.innerHTML = "<div class='muted'>РџРѕРєР° РЅРµС‚ РґРёР°Р»РѕРіРѕРІ.</div>";
           return;
         }
         adminChatUsersList.innerHTML = state.chatUsers
           .map((user) => {
             const selected = Number(state.selectedChatUserId) === Number(user.telegram_id);
             const unread = Number(user.unread_count || 0);
-            const unreadBadge = unread > 0 ? ` • новых: ${unread}` : "";
+            const unreadBadge = unread > 0 ? ` вЂў РЅРѕРІС‹С…: ${unread}` : "";
             return `
               <button class="chat-user-btn${selected ? " active" : ""}" type="button" data-chat-user-id="${escapeHtml(user.telegram_id)}">
                 <div>${escapeHtml(normalizeUsername(user.username))}</div>
-                <div class="chat-user-meta">${escapeHtml(user.full_name || "-")} • id:${escapeHtml(user.telegram_id)}</div>
-                <div class="chat-user-meta">${escapeHtml(user.last_message || "Без сообщений")}${escapeHtml(unreadBadge)}</div>
+                <div class="chat-user-meta">${escapeHtml(user.full_name || "-")} вЂў id:${escapeHtml(user.telegram_id)}</div>
+                <div class="chat-user-meta">${escapeHtml(user.last_message || "Р‘РµР· СЃРѕРѕР±С‰РµРЅРёР№")}${escapeHtml(unreadBadge)}</div>
               </button>
             `;
           })
@@ -901,7 +905,7 @@
             }
             state.selectedChatUserId = telegramId;
             loadAdminChatConversation(telegramId, false).catch((e) =>
-              setStatus(`Ошибка загрузки переписки: ${e.message}`, true)
+              setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РїРµСЂРµРїРёСЃРєРё: ${e.message}`, true)
             );
           });
         });
@@ -909,7 +913,7 @@
 
       function renderAdminChatMessages() {
         if (!state.chatMessages.length) {
-          adminChatMessages.innerHTML = "<div class='muted'>Сообщений пока нет.</div>";
+          adminChatMessages.innerHTML = "<div class='muted'>РЎРѕРѕР±С‰РµРЅРёР№ РїРѕРєР° РЅРµС‚.</div>";
           return;
         }
         adminChatMessages.innerHTML = state.chatMessages
@@ -957,7 +961,7 @@
           return;
         }
         if (!silent) {
-          setStatus("Загрузка диалогов...");
+          setStatus("Р—Р°РіСЂСѓР·РєР° РґРёР°Р»РѕРіРѕРІ...");
         }
         const data = await api(`/api/admin/chat/users/${state.telegramId}?limit=150`);
         state.chatUsers = data.items || [];
@@ -982,17 +986,17 @@
         }
         const data = await api(`/api/admin/chat/${state.telegramId}/${targetTelegramId}?limit=250`);
         state.chatMessages = data.items || [];
-        adminChatTitle.textContent = `Чат с ${normalizeUsername(data.username)} • id:${data.user_telegram_id}`;
+        adminChatTitle.textContent = `Р§Р°С‚ СЃ ${normalizeUsername(data.username)} вЂў id:${data.user_telegram_id}`;
         renderAdminChatMessages();
         if (!silent) {
-          setStatus(`Открыт чат с пользователем ${data.user_telegram_id}.`);
+          setStatus(`РћС‚РєСЂС‹С‚ С‡Р°С‚ СЃ РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј ${data.user_telegram_id}.`);
         }
       }
 
       async function sendAdminChatMessage() {
         const targetTelegramId = Number(state.selectedChatUserId || 0);
         if (!targetTelegramId) {
-          setStatus("Сначала выберите диалог слева.", true);
+          setStatus("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РґРёР°Р»РѕРі СЃР»РµРІР°.", true);
           return;
         }
         const message = String(adminChatInput.value || "").trim();
@@ -1019,8 +1023,8 @@
         if (state.selectedChatUserId) {
           await loadAdminChatConversation(state.selectedChatUserId, false);
         } else {
-          adminChatTitle.textContent = "Выберите пользователя слева";
-          adminChatMessages.innerHTML = "<div class='muted'>Нет сообщений.</div>";
+          adminChatTitle.textContent = "Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃР»РµРІР°";
+          adminChatMessages.innerHTML = "<div class='muted'>РќРµС‚ СЃРѕРѕР±С‰РµРЅРёР№.</div>";
         }
         startAdminChatPolling();
       }
@@ -1029,7 +1033,7 @@
         if (!state.accessGranted) {
           return;
         }
-        setStatus("Загрузка пользователей...");
+        setStatus("Р—Р°РіСЂСѓР·РєР° РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№...");
         const data = await api(`/api/admin/users/${state.telegramId}`);
         renderUsersView(data.items || []);
       }
@@ -1038,7 +1042,7 @@
         if (!state.accessGranted) {
           return;
         }
-        setStatus("Загрузка заявок...");
+        setStatus("Р—Р°РіСЂСѓР·РєР° Р·Р°СЏРІРѕРє...");
         const data = await api(`/api/admin/requests/${state.telegramId}`);
         state.requests = data.items || [];
         renderRequestsView();
@@ -1048,7 +1052,7 @@
         if (!state.accessGranted) {
           return;
         }
-        setStatus("Загрузка истории статусов...");
+        setStatus("Р—Р°РіСЂСѓР·РєР° РёСЃС‚РѕСЂРёРё СЃС‚Р°С‚СѓСЃРѕРІ...");
         const data = await api(`/api/admin/request-history/${state.telegramId}`);
         renderHistoryView(data.items || []);
       }
@@ -1057,7 +1061,7 @@
         if (!state.accessGranted) {
           return;
         }
-        setStatus("Загрузка настроек...");
+        setStatus("Р—Р°РіСЂСѓР·РєР° РЅР°СЃС‚СЂРѕРµРє...");
         const data = await api(`/api/admin/settings/${state.telegramId}`);
         state.appSettings = data;
         renderSettingsView(data);
@@ -1067,26 +1071,26 @@
         if (!state.accessGranted) {
           return;
         }
-        const minDealSelect = document.getElementById("settingsMinDealUsdt");
+        const minDealSelect = document.getElementById("settingsMinDealRub");
         const roundStepSelect = document.getElementById("settingsRoundStepRub");
         if (!minDealSelect || !roundStepSelect) {
           return;
         }
-        const minDealUsdt = Number(minDealSelect.value);
+        const minDealRub = Number(minDealSelect.value);
         const roundStepRub = Number(roundStepSelect.value);
-        if (!Number.isFinite(minDealUsdt)) {
-          setStatus("Некорректное значение минимальной сделки.", true);
+        if (!Number.isFinite(minDealRub)) {
+          setStatus("РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РјРёРЅРёРјР°Р»СЊРЅРѕР№ СЃРґРµР»РєРё.", true);
           return;
         }
         if (!Number.isFinite(roundStepRub)) {
-          setStatus("Некорректное значение шага округления.", true);
+          setStatus("РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ С€Р°РіР° РѕРєСЂСѓРіР»РµРЅРёСЏ.", true);
           return;
         }
-        setStatus("Сохраняю настройки...");
+        setStatus("РЎРѕС…СЂР°РЅСЏСЋ РЅР°СЃС‚СЂРѕР№РєРё...");
         const data = await api(`/api/admin/settings/${state.telegramId}`, {
           method: "PATCH",
           body: JSON.stringify({
-            min_deal_usdt: minDealUsdt,
+            min_deal_rub: minDealRub,
             round_step_rub: roundStepRub,
           }),
         });
@@ -1096,18 +1100,18 @@
 
       async function applySelectedRequestStatus() {
         if (!state.accessGranted) {
-          setStatus("Доступ не предоставлен.", true);
+          setStatus("Р”РѕСЃС‚СѓРї РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅ.", true);
           return;
         }
         const selected = state.requests.find((item) => Number(item.id) === Number(state.selectedRequestId));
         if (!selected) {
-          setStatus("Сначала выберите заявку в таблице.", true);
+          setStatus("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ Р·Р°СЏРІРєСѓ РІ С‚Р°Р±Р»РёС†Рµ.", true);
           return;
         }
         const newStatus = editorStatus.value;
         const comment = String(editorComment.value || "").trim();
 
-        setStatus(`Обновляю статус заявки #${selected.id}...`);
+        setStatus(`РћР±РЅРѕРІР»СЏСЋ СЃС‚Р°С‚СѓСЃ Р·Р°СЏРІРєРё #${selected.id}...`);
         await api(`/api/admin/requests/${state.telegramId}/${selected.id}/status`, {
           method: "PATCH",
           body: JSON.stringify({
@@ -1116,63 +1120,63 @@
           }),
         });
 
-        setStatus(`Заявка #${selected.id}: статус обновлен.`);
+        setStatus(`Р—Р°СЏРІРєР° #${selected.id}: СЃС‚Р°С‚СѓСЃ РѕР±РЅРѕРІР»РµРЅ.`);
         await loadRequests();
       }
 
       async function deleteSelectedRequest() {
         if (!state.accessGranted) {
-          setStatus("Доступ не предоставлен.", true);
+          setStatus("Р”РѕСЃС‚СѓРї РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅ.", true);
           return;
         }
         const selected = state.requests.find((item) => Number(item.id) === Number(state.selectedRequestId));
         if (!selected) {
-          setStatus("Сначала выберите заявку в таблице.", true);
+          setStatus("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ Р·Р°СЏРІРєСѓ РІ С‚Р°Р±Р»РёС†Рµ.", true);
           return;
         }
-        const confirmed = window.confirm(`Удалить заявку #${selected.id}? Это действие необратимо.`);
+        const confirmed = window.confirm(`РЈРґР°Р»РёС‚СЊ Р·Р°СЏРІРєСѓ #${selected.id}? Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµРѕР±СЂР°С‚РёРјРѕ.`);
         if (!confirmed) {
           return;
         }
-        setStatus(`Удаляю заявку #${selected.id}...`);
+        setStatus(`РЈРґР°Р»СЏСЋ Р·Р°СЏРІРєСѓ #${selected.id}...`);
         await api(`/api/admin/requests/${state.telegramId}/${selected.id}`, {
           method: "DELETE",
         });
         state.selectedRequestId = null;
-        setStatus(`Заявка #${selected.id} удалена.`);
+        setStatus(`Р—Р°СЏРІРєР° #${selected.id} СѓРґР°Р»РµРЅР°.`);
         await loadRequests();
       }
 
       document.getElementById("loadUsersBtn").addEventListener("click", () => {
-        loadUsers().catch((e) => setStatus(`Ошибка загрузки пользователей: ${e.message}`, true));
+        loadUsers().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№: ${e.message}`, true));
       });
       document.getElementById("loadRequestsBtn").addEventListener("click", () => {
-        loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
+        loadRequests().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё Р·Р°СЏРІРѕРє: ${e.message}`, true));
       });
       document.getElementById("loadHistoryBtn").addEventListener("click", () => {
-        loadHistory().catch((e) => setStatus(`Ошибка загрузки истории: ${e.message}`, true));
+        loadHistory().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёСЃС‚РѕСЂРёРё: ${e.message}`, true));
       });
       document.getElementById("loadChatBtn").addEventListener("click", () => {
-        loadChatView().catch((e) => setStatus(`Ошибка загрузки чата: ${e.message}`, true));
+        loadChatView().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё С‡Р°С‚Р°: ${e.message}`, true));
       });
       document.getElementById("loadSettingsBtn").addEventListener("click", () => {
-        loadSettings().catch((e) => setStatus(`Ошибка загрузки настроек: ${e.message}`, true));
+        loadSettings().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РЅР°СЃС‚СЂРѕРµРє: ${e.message}`, true));
       });
       document.getElementById("applyStatusBtn").addEventListener("click", () => {
-        applySelectedRequestStatus().catch((e) => setStatus(`Ошибка смены статуса: ${e.message}`, true));
+        applySelectedRequestStatus().catch((e) => setStatus(`РћС€РёР±РєР° СЃРјРµРЅС‹ СЃС‚Р°С‚СѓСЃР°: ${e.message}`, true));
       });
       document.getElementById("deleteRequestBtn").addEventListener("click", () => {
-        deleteSelectedRequest().catch((e) => setStatus(`Ошибка удаления заявки: ${e.message}`, true));
+        deleteSelectedRequest().catch((e) => setStatus(`РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ Р·Р°СЏРІРєРё: ${e.message}`, true));
       });
       adminChatSendBtn.addEventListener("click", () => {
-        sendAdminChatMessage().catch((e) => setStatus(`Ошибка отправки сообщения: ${e.message}`, true));
+        sendAdminChatMessage().catch((e) => setStatus(`РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ: ${e.message}`, true));
       });
       adminChatInput.addEventListener("keydown", (event) => {
         if (event.key !== "Enter") {
           return;
         }
         event.preventDefault();
-        sendAdminChatMessage().catch((e) => setStatus(`Ошибка отправки сообщения: ${e.message}`, true));
+        sendAdminChatMessage().catch((e) => setStatus(`РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ: ${e.message}`, true));
       });
       document.getElementById("backBtn").addEventListener("click", () => {
         window.location.href = "/";
@@ -1182,7 +1186,7 @@
 
       checkAccess().then(() => {
         if (state.accessGranted) {
-          loadRequests().catch((e) => setStatus(`Ошибка загрузки заявок: ${e.message}`, true));
+          loadRequests().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё Р·Р°СЏРІРѕРє: ${e.message}`, true));
         }
       });
     </script>

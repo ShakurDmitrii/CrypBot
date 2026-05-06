@@ -1777,9 +1777,10 @@
         isViewSwitching: false,
         isOperator: false,
         isLiteMode: false,
-        minDealUsdt: 100,
+        minDealRub: 8000,
         roundStepRub: 500,
         minAmountByDirection: {},
+        minDealUsdtApproxByDirection: {},
         calcCache: new Map(),
       };
 
@@ -2074,8 +2075,11 @@
         if (Number.isFinite(minAmount) && minAmount > 0) {
           state.minAmountByDirection[direction] = minAmount;
         }
-        if (Number.isFinite(Number(data.min_deal_usdt))) {
-          state.minDealUsdt = Number(data.min_deal_usdt);
+        if (Number.isFinite(Number(data.min_deal_rub))) {
+          state.minDealRub = Number(data.min_deal_rub);
+        }
+        if (Number.isFinite(Number(data.min_deal_usdt_approx))) {
+          state.minDealUsdtApproxByDirection[direction] = Number(data.min_deal_usdt_approx);
         }
         if (Number.isFinite(Number(data.round_step_rub))) {
           state.roundStepRub = Number(data.round_step_rub);
@@ -2136,7 +2140,11 @@
           return "";
         }
         const meta = getDirectionMeta(direction);
-        return `Минимальная сделка: ${formatAmount(minAmount, 2)} ${meta.send} (≈ ${state.minDealUsdt} USDT). Округление RUB: ${state.roundStepRub}.`;
+        const approxUsdt = Number(state.minDealUsdtApproxByDirection[direction] || 0);
+        return `Минимальная сделка: ${formatAmount(minAmount, 2)} ${meta.send} (база: ${formatAmount(
+          state.minDealRub,
+          0
+        )} RUB ≈ ${formatAmount(approxUsdt, 2)} USDT). Округление RUB: ${state.roundStepRub}.`;
       }
 
       function updateMinDealHints() {

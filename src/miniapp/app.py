@@ -15,14 +15,14 @@ from src.config import get_settings
 from src.db.models import AmlCheck, ExchangeRequest, RequestStatus, RequestStatusHistory, SupportMessage, User
 from src.db.session import SessionLocal
 from src.services.app_settings import (
-    MIN_DEAL_USDT_ALLOWED,
-    MIN_DEAL_USDT_DEFAULT,
+    MIN_DEAL_RUB_ALLOWED,
+    MIN_DEAL_RUB_DEFAULT,
     ROUND_STEP_RUB_ALLOWED,
     ROUND_STEP_RUB_DEFAULT,
     get_margin_percent,
-    get_min_deal_usdt,
+    get_min_deal_rub,
     get_round_step_rub,
-    set_min_deal_usdt,
+    set_min_deal_rub,
     set_round_step_rub,
 )
 from src.services.exchange_requests import (
@@ -80,7 +80,7 @@ class AdminSupportMessagePayload(BaseModel):
 
 
 class AdminUpdateSettingsPayload(BaseModel):
-    min_deal_usdt: int | None = None
+    min_deal_rub: int | None = None
     round_step_rub: int | None = None
 
 
@@ -206,15 +206,15 @@ def _calculate_send_from_receive(
 def _min_send_amount(
     direction: str,
     final_rate: float,
-    min_deal_usdt: int,
+    min_deal_rub: int,
     round_step_rub: int,
 ) -> float:
-    send_currency, receive_currency = _split_direction(direction)
-    if send_currency == "USDT":
-        return float(min_deal_usdt)
-    if receive_currency == "USDT" and final_rate > 0:
-        rub_value = min_deal_usdt / final_rate
-        return _ceil_to_step(rub_value, round_step_rub)
+    send_currency, _ = _split_direction(direction)
+    if send_currency == "RUB":
+        return _ceil_to_step(float(min_deal_rub), round_step_rub)
+    if send_currency == "USDT" and final_rate > 0:
+        usdt_value = float(min_deal_rub) / final_rate
+        return math.ceil(usdt_value * 100) / 100
     return 0.0
 
 
@@ -294,11 +294,11 @@ async def offer() -> dict[str, str]:
 async def admin_settings(telegram_id: int) -> dict[str, int | list[int]]:
     _require_operator(telegram_id)
     async with SessionLocal() as session:
-        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     return {
-        "min_deal_usdt": int(min_deal_usdt),
-        "allowed_min_deal_usdt": list(MIN_DEAL_USDT_ALLOWED),
+        "min_deal_rub": int(min_deal_rub),
+        "allowed_min_deal_rub": list(MIN_DEAL_RUB_ALLOWED),
         "round_step_rub": int(round_step_rub),
         "allowed_round_step_rub": list(ROUND_STEP_RUB_ALLOWED),
     }
@@ -310,31 +310,31 @@ async def admin_update_settings(
     payload: AdminUpdateSettingsPayload,
 ) -> dict[str, int | list[int]]:
     _require_operator(telegram_id)
-    if payload.min_deal_usdt is None and payload.round_step_rub is None:
+    if payload.min_deal_rub is None and payload.round_step_rub is None:
         raise HTTPException(status_code=400, detail="Nothing to update")
-    if payload.min_deal_usdt is not None and payload.min_deal_usdt not in MIN_DEAL_USDT_ALLOWED:
-        allowed = ", ".join(str(item) for item in MIN_DEAL_USDT_ALLOWED)
-        raise HTTPException(status_code=400, detail=f"min_deal_usdt must be one of: {allowed}")
+    if payload.min_deal_rub is not None and payload.min_deal_rub not in MIN_DEAL_RUB_ALLOWED:
+        allowed = ", ".join(str(item) for item in MIN_DEAL_RUB_ALLOWED)
+        raise HTTPException(status_code=400, detail=f"min_deal_rub must be one of: {allowed}")
     if payload.round_step_rub is not None and payload.round_step_rub not in ROUND_STEP_RUB_ALLOWED:
         allowed = ", ".join(str(item) for item in ROUND_STEP_RUB_ALLOWED)
         raise HTTPException(status_code=400, detail=f"round_step_rub must be one of: {allowed}")
 
     async with SessionLocal() as session:
         try:
-            if payload.min_deal_usdt is not None:
-                await set_min_deal_usdt(session, payload.min_deal_usdt)
+            if payload.min_deal_rub is not None:
+                await set_min_deal_rub(session, payload.min_deal_rub)
             if payload.round_step_rub is not None:
                 await set_round_step_rub(session, payload.round_step_rub)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         await session.commit()
 
-        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
 
     return {
-        "min_deal_usdt": int(min_deal_usdt),
-        "allowed_min_deal_usdt": list(MIN_DEAL_USDT_ALLOWED),
+        "min_deal_rub": int(min_deal_rub),
+        "allowed_min_deal_rub": list(MIN_DEAL_RUB_ALLOWED),
         "round_step_rub": int(round_step_rub),
         "allowed_round_step_rub": list(ROUND_STEP_RUB_ALLOWED),
     }
@@ -355,7 +355,7 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
         quote = await get_quote(payload.direction, margin_percent, settings)
@@ -367,8 +367,9 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
         quote.final_rate,
         round_step_rub,
     )
-    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt, round_step_rub)
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_rub, round_step_rub)
     send_currency, _ = _split_direction(payload.direction)
+    min_deal_usdt_approx = _round2(min_deal_rub / quote.final_rate) if quote.final_rate > 0 else 0.0
     return {
         "direction": payload.direction,
         "amount_send": amount_send,
@@ -376,7 +377,8 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
         "base_rate": _round2(quote.base_rate),
         "final_rate": _round2(quote.final_rate),
         "margin_percent": quote.margin_percent,
-        "min_deal_usdt": min_deal_usdt,
+        "min_deal_rub": min_deal_rub,
+        "min_deal_usdt_approx": min_deal_usdt_approx,
         "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub),
         "round_step_rub": round_step_rub,
     }
@@ -387,7 +389,7 @@ async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
         quote = await get_quote(payload.direction, margin_percent, settings)
@@ -399,8 +401,9 @@ async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
         quote.final_rate,
         round_step_rub,
     )
-    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt, round_step_rub)
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_rub, round_step_rub)
     send_currency, _ = _split_direction(payload.direction)
+    min_deal_usdt_approx = _round2(min_deal_rub / quote.final_rate) if quote.final_rate > 0 else 0.0
     return {
         "direction": payload.direction,
         "amount_send": amount_send,
@@ -408,7 +411,8 @@ async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
         "base_rate": _round2(quote.base_rate),
         "final_rate": _round2(quote.final_rate),
         "margin_percent": quote.margin_percent,
-        "min_deal_usdt": min_deal_usdt,
+        "min_deal_rub": min_deal_rub,
+        "min_deal_usdt_approx": min_deal_usdt_approx,
         "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub),
         "round_step_rub": round_step_rub,
     }
@@ -419,7 +423,7 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
         margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-        min_deal_usdt = await get_min_deal_usdt(session, MIN_DEAL_USDT_DEFAULT)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
         quote = await get_quote(payload.direction, margin_percent, settings)
@@ -431,7 +435,7 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
         quote.final_rate,
         round_step_rub,
     )
-    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_usdt, round_step_rub)
+    min_amount_send = _min_send_amount(payload.direction, quote.final_rate, min_deal_rub, round_step_rub)
     if min_amount_send > 0 and amount_send < min_amount_send:
         send_currency, _ = _split_direction(payload.direction)
         raise HTTPException(
