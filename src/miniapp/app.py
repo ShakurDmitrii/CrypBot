@@ -149,21 +149,27 @@ def _split_direction(direction: str) -> tuple[str, str]:
     return parts[0].strip().upper(), parts[1].strip().upper()
 
 
-def _round_to_step(value: float, step: int) -> float:
-    if step <= 0:
-        return float(value)
-    return float(round(float(value) / step) * step)
-
-
 def _ceil_to_step(value: float, step: int) -> float:
     if step <= 0:
         return float(value)
     return float(math.ceil(float(value) / step) * step)
 
 
-def _normalize_amount_by_currency(value: float, currency: str, round_step_rub: int) -> float:
+def _floor_to_step(value: float, step: int) -> float:
+    if step <= 0:
+        return float(value)
+    return float(math.floor(float(value) / step) * step)
+
+
+def _normalize_send_amount(value: float, currency: str, round_step_rub: int) -> float:
     if currency == "RUB":
-        return _round_to_step(value, round_step_rub)
+        return _ceil_to_step(value, round_step_rub)
+    return _round2(value)
+
+
+def _normalize_receive_amount(value: float, currency: str, round_step_rub: int) -> float:
+    if currency == "RUB":
+        return _floor_to_step(value, round_step_rub)
     return _round2(value)
 
 
@@ -174,9 +180,9 @@ def _calculate_receive(
     round_step_rub: int,
 ) -> tuple[float, float]:
     send_currency, receive_currency = _split_direction(direction)
-    normalized_send = _normalize_amount_by_currency(amount_send, send_currency, round_step_rub)
+    normalized_send = _normalize_send_amount(amount_send, send_currency, round_step_rub)
     raw_receive = calc_receive(normalized_send, final_rate)
-    normalized_receive = _normalize_amount_by_currency(raw_receive, receive_currency, round_step_rub)
+    normalized_receive = _normalize_receive_amount(raw_receive, receive_currency, round_step_rub)
     return normalized_send, normalized_receive
 
 
@@ -189,9 +195,9 @@ def _calculate_send_from_receive(
     if final_rate <= 0:
         raise HTTPException(status_code=503, detail="Rate is unavailable")
     send_currency, receive_currency = _split_direction(direction)
-    normalized_receive = _normalize_amount_by_currency(amount_receive, receive_currency, round_step_rub)
+    normalized_receive = _normalize_receive_amount(amount_receive, receive_currency, round_step_rub)
     raw_send = normalized_receive / final_rate
-    normalized_send = _normalize_amount_by_currency(raw_send, send_currency, round_step_rub)
+    normalized_send = _normalize_send_amount(raw_send, send_currency, round_step_rub)
     _, normalized_receive_after_send = _calculate_receive(
         direction,
         normalized_send,
@@ -421,7 +427,7 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
         "margin_percent": quote.margin_percent,
         "min_deal_rub": min_deal_rub,
         "min_deal_usdt_approx": min_deal_usdt_approx,
-        "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub),
+        "min_amount_send": _normalize_send_amount(min_amount_send, send_currency, round_step_rub),
         "round_step_rub": round_step_rub,
     }
 
@@ -455,7 +461,7 @@ async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
         "margin_percent": quote.margin_percent,
         "min_deal_rub": min_deal_rub,
         "min_deal_usdt_approx": min_deal_usdt_approx,
-        "min_amount_send": _normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub),
+        "min_amount_send": _normalize_send_amount(min_amount_send, send_currency, round_step_rub),
         "round_step_rub": round_step_rub,
     }
 
@@ -482,7 +488,7 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
         send_currency, _ = _split_direction(payload.direction)
         raise HTTPException(
             status_code=400,
-            detail=f"Минимальная сделка: {format(_normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub), '.2f')} {send_currency}",
+            detail=f"Минимальная сделка: {format(_normalize_send_amount(min_amount_send, send_currency, round_step_rub), '.2f')} {send_currency}",
         )
 
     username, full_name = await _resolve_telegram_user_identity(

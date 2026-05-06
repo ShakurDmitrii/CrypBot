@@ -1,4 +1,5 @@
 import logging
+import math
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiogram import F, Router
@@ -16,7 +17,13 @@ from src.bot.keyboards.main import (
 from src.bot.states.request_flow import AmlFlow, CalcFlow, CreateRequestFlow
 from src.config import get_settings
 from src.db.session import SessionLocal
-from src.services.app_settings import get_margin_percent
+from src.services.app_settings import (
+    MIN_DEAL_RUB_DEFAULT,
+    ROUND_STEP_RUB_DEFAULT,
+    get_margin_percent,
+    get_min_deal_rub,
+    get_round_step_rub,
+)
 from src.services.exchange_requests import (
     create_aml_check,
     create_exchange_request,
@@ -85,6 +92,93 @@ def _parse_amount(raw: str) -> float | None:
     return value
 
 
+def _round2(value: float) -> float:
+    return round(float(value), 2)
+
+
+def _split_direction(direction: str) -> tuple[str, str]:
+    parts = direction.split("->", 1)
+    if len(parts) != 2:
+        return "SUM", "SUM"
+    return parts[0].strip().upper(), parts[1].strip().upper()
+
+
+def _ceil_to_step(value: float, step: int) -> float:
+    if step <= 0:
+        return float(value)
+    return float(math.ceil(float(value) / step) * step)
+
+
+def _floor_to_step(value: float, step: int) -> float:
+    if step <= 0:
+        return float(value)
+    return float(math.floor(float(value) / step) * step)
+
+
+def _normalize_send_amount(value: float, currency: str, round_step_rub: int) -> float:
+    if currency == "RUB":
+        return _ceil_to_step(value, round_step_rub)
+    return _round2(value)
+
+
+def _normalize_receive_amount(value: float, currency: str, round_step_rub: int) -> float:
+    if currency == "RUB":
+        return _floor_to_step(value, round_step_rub)
+    return _round2(value)
+
+
+def _calculate_receive_amounts(
+    direction: str,
+    amount_send: float,
+    final_rate: float,
+    round_step_rub: int,
+) -> tuple[float, float]:
+    send_currency, receive_currency = _split_direction(direction)
+    normalized_send = _normalize_send_amount(amount_send, send_currency, round_step_rub)
+    raw_receive = calc_receive(normalized_send, final_rate)
+    normalized_receive = _normalize_receive_amount(raw_receive, receive_currency, round_step_rub)
+    return normalized_send, normalized_receive
+
+
+def _min_send_amount(
+    direction: str,
+    final_rate: float,
+    min_deal_rub: int,
+    round_step_rub: int,
+) -> float:
+    send_currency, _ = _split_direction(direction)
+    if send_currency == "RUB":
+        return _ceil_to_step(float(min_deal_rub), round_step_rub)
+    if send_currency == "USDT" and final_rate > 0:
+        usdt_value = float(min_deal_rub) / final_rate
+        return math.ceil(usdt_value * 100) / 100
+    return 0.0
+
+
+def _format_money(value: float) -> str:
+    return f"{float(value):.2f}".rstrip("0").rstrip(".")
+
+
+async def _calculate_request_amounts(direction: str, amount_send: float) -> tuple[float, float, float, float, float]:
+    async with SessionLocal() as session:
+        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
+        round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
+    quote = await get_quote(direction, margin_percent, settings)
+    normalized_send, normalized_receive = _calculate_receive_amounts(
+        direction=direction,
+        amount_send=amount_send,
+        final_rate=quote.final_rate,
+        round_step_rub=round_step_rub,
+    )
+    min_amount_send = _min_send_amount(direction, quote.final_rate, min_deal_rub, round_step_rub)
+    send_currency, _ = _split_direction(direction)
+    min_amount_send = _normalize_send_amount(min_amount_send, send_currency, round_step_rub)
+    if min_amount_send > 0 and normalized_send < min_amount_send:
+        raise ValueError(f"Минимальная сделка: {_format_money(min_amount_send)} {send_currency}.")
+    return normalized_send, normalized_receive, quote.base_rate, quote.final_rate, quote.margin_percent
+
+
 def _operator_username_for_user() -> str:
     username = settings.bot_operator_username.strip()
     if not username:
@@ -128,17 +222,14 @@ async def _build_request_preview_text(
     requisites: str,
 ) -> str | None:
     try:
-        async with SessionLocal() as session:
-            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-        quote = await get_quote(direction, margin_percent, settings)
+        amount_send, amount_receive, _, final_rate, _ = await _calculate_request_amounts(direction, amount_send)
     except RateServiceError:
         return None
-    amount_receive = calc_receive(amount_send, quote.final_rate)
     return (
         "<b>Проверьте заявку</b>\n\n"
         f"Направление: <b>{_format_direction(direction)}</b>\n"
         f"Отправка: <code>{amount_send}</code>\n"
-        f"Итоговый курс: <code>{quote.final_rate:.6f}</code>\n"
+        f"Итоговый курс: <code>{final_rate:.6f}</code>\n"
         f"К получению: <code>{amount_receive}</code>\n\n"
         f"ФИО: {request_full_name}\n"
         f"Реквизиты: {requisites}"
@@ -334,6 +425,20 @@ async def request_set_amount(message: Message, state: FSMContext) -> None:
     if amount is None:
         await message.answer("Введите корректную сумму числом.")
         return
+    data = await state.get_data()
+    direction = data.get("direction")
+    if not direction:
+        await state.clear()
+        await message.answer("Сессия заявки устарела. Пожалуйста, начните заново.", reply_markup=_menu(message))
+        return
+    try:
+        amount, _, _, _, _ = await _calculate_request_amounts(direction, amount)
+    except RateServiceError:
+        await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
+        return
+    except ValueError as exc:
+        await message.answer(str(exc), reply_markup=_back_cancel_menu())
+        return
     await state.update_data(amount=amount)
     await state.set_state(CreateRequestFlow.waiting_full_name)
     await message.answer("Шаг 3/4. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
@@ -372,12 +477,17 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
 
     amount_send = float(amount_raw)
     await state.update_data(request_requisites=requisites)
-    preview = await _build_request_preview_text(
-        direction=direction,
-        amount_send=amount_send,
-        request_full_name=request_full_name,
-        requisites=requisites,
-    )
+    try:
+        preview = await _build_request_preview_text(
+            direction=direction,
+            amount_send=amount_send,
+            request_full_name=request_full_name,
+            requisites=requisites,
+        )
+    except ValueError as exc:
+        await state.set_state(CreateRequestFlow.waiting_amount)
+        await message.answer(str(exc), reply_markup=_back_cancel_menu())
+        return
     if preview is None:
         await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
         return
@@ -424,13 +534,14 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
 
     amount_send = float(amount_raw)
     try:
-        async with SessionLocal() as session:
-            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-        quote = await get_quote(direction, margin_percent, settings)
+        amount_send, amount_receive, base_rate, final_rate, margin_percent = await _calculate_request_amounts(direction, amount_send)
     except RateServiceError:
         await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))
         return
-    amount_receive = calc_receive(amount_send, quote.final_rate)
+    except ValueError as exc:
+        await state.set_state(CreateRequestFlow.waiting_amount)
+        await message.answer(str(exc), reply_markup=_back_cancel_menu())
+        return
 
     requisites_for_storage = (
         f"ФИО: {request_full_name}\n"
@@ -450,9 +561,9 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
             direction=direction,
             amount_send=amount_send,
             amount_receive=amount_receive,
-            base_rate=quote.base_rate,
-            margin_percent=quote.margin_percent,
-            final_rate=quote.final_rate,
+            base_rate=base_rate,
+            margin_percent=margin_percent,
+            final_rate=final_rate,
             user_requisites=requisites_for_storage,
         )
         await session.commit()
@@ -468,7 +579,7 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
                 f"Направление: {direction}\n"
                 f"Отправка: {amount_send}\n"
                 f"Получение: {amount_receive}\n"
-                f"Курс: {quote.final_rate:.6f}\n"
+                f"Курс: {final_rate:.6f}\n"
                 f"ФИО: {request_full_name}\n"
                 f"Реквизиты: {requisites}"
             ),
