@@ -225,6 +225,56 @@ def _normalize_username(raw: str | None) -> str:
     return value
 
 
+def _clean_optional_text(raw: str | None, max_length: int) -> str | None:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    return value[:max_length]
+
+
+def _clean_username(raw: str | None) -> str | None:
+    value = (raw or "").strip().lstrip("@")
+    if not value:
+        return None
+    return value[:64]
+
+
+async def _resolve_telegram_user_identity(
+    telegram_id: int,
+    username: str | None,
+    full_name: str | None,
+) -> tuple[str | None, str | None]:
+    resolved_username = _clean_username(username)
+    resolved_full_name = _clean_optional_text(full_name, 128)
+    if resolved_username and resolved_full_name:
+        return resolved_username, resolved_full_name
+
+    try:
+        chat = await telegram_bot.get_chat(telegram_id)
+    except Exception as exc:
+        logger.warning("Failed to resolve Telegram user identity for %s: %s", telegram_id, exc)
+        return resolved_username, resolved_full_name
+
+    if not resolved_username:
+        resolved_username = _clean_username(getattr(chat, "username", None))
+
+    if not resolved_full_name:
+        chat_full_name = _clean_optional_text(getattr(chat, "full_name", None), 128)
+        if not chat_full_name:
+            name_parts = [
+                str(part).strip()
+                for part in (
+                    getattr(chat, "first_name", None),
+                    getattr(chat, "last_name", None),
+                )
+                if part
+            ]
+            chat_full_name = _clean_optional_text(" ".join(name_parts), 128)
+        resolved_full_name = chat_full_name
+
+    return resolved_username, resolved_full_name
+
+
 async def _notify_operator_new_request(
     request: ExchangeRequest,
     payload: CreateRequestPayload,
@@ -435,12 +485,18 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
             detail=f"Минимальная сделка: {format(_normalize_amount_by_currency(min_amount_send, send_currency, round_step_rub), '.2f')} {send_currency}",
         )
 
+    username, full_name = await _resolve_telegram_user_identity(
+        telegram_id=payload.telegram_id,
+        username=payload.username,
+        full_name=payload.full_name,
+    )
+
     async with SessionLocal() as session:
         user = await get_or_create_user(
             session=session,
             telegram_id=payload.telegram_id,
-            username=payload.username,
-            full_name=payload.full_name,
+            username=username,
+            full_name=full_name,
         )
         request = await create_exchange_request(
             session=session,
@@ -456,6 +512,8 @@ async def create_request(payload: CreateRequestPayload) -> dict[str, int | str |
         )
         await session.commit()
 
+    payload.username = username
+    payload.full_name = full_name
     await _notify_operator_new_request(request, payload)
 
     return {
