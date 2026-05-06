@@ -1,4 +1,3 @@
-import re
 import logging
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -86,18 +85,6 @@ def _parse_amount(raw: str) -> float | None:
     return value
 
 
-def _parse_phone(raw: str) -> str | None:
-    candidate = raw.strip()
-    if not candidate:
-        return None
-    if not re.fullmatch(r"[0-9+\-()\s]{7,25}", candidate):
-        return None
-    digits = re.sub(r"\D", "", candidate)
-    if len(digits) < 10:
-        return None
-    return candidate
-
-
 def _operator_username_for_user() -> str:
     username = settings.bot_operator_username.strip()
     if not username:
@@ -138,7 +125,6 @@ async def _build_request_preview_text(
     direction: str,
     amount_send: float,
     request_full_name: str,
-    request_phone: str,
     requisites: str,
 ) -> str | None:
     try:
@@ -155,7 +141,6 @@ async def _build_request_preview_text(
         f"Итоговый курс: <code>{quote.final_rate:.6f}</code>\n"
         f"К получению: <code>{amount_receive}</code>\n\n"
         f"ФИО: {request_full_name}\n"
-        f"Телефон: {request_phone}\n"
         f"Реквизиты: {requisites}"
     )
 
@@ -200,7 +185,7 @@ async def request_back_from_direction(message: Message, state: FSMContext) -> No
 async def request_back_from_amount(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_direction)
     await message.answer(
-        "Шаг 1/5. Выберите направление кнопкой ниже.",
+        "Шаг 1/4. Выберите направление кнопкой ниже.",
         reply_markup=direction_keyboard(available_directions()),
     )
 
@@ -208,25 +193,19 @@ async def request_back_from_amount(message: Message, state: FSMContext) -> None:
 @router.message(StateFilter(CreateRequestFlow.waiting_full_name), F.text == BACK_TEXT)
 async def request_back_from_full_name(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
-
-
-@router.message(StateFilter(CreateRequestFlow.waiting_phone), F.text == BACK_TEXT)
-async def request_back_from_phone(message: Message, state: FSMContext) -> None:
-    await state.set_state(CreateRequestFlow.waiting_full_name)
-    await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
+    await message.answer("Шаг 2/4. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
 
 @router.message(StateFilter(CreateRequestFlow.waiting_requisites), F.text == BACK_TEXT)
 async def request_back_from_requisites(message: Message, state: FSMContext) -> None:
-    await state.set_state(CreateRequestFlow.waiting_phone)
-    await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
+    await state.set_state(CreateRequestFlow.waiting_full_name)
+    await message.answer("Шаг 3/4. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
 
 
 @router.message(StateFilter(CreateRequestFlow.waiting_confirm), F.text == BACK_TEXT)
 async def request_back_from_confirm(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_requisites)
-    await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
+    await message.answer("Шаг 4/4. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
 
 
 @router.message(Command("myid"))
@@ -330,7 +309,7 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
 async def create_request_start(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateRequestFlow.waiting_direction)
     await message.answer(
-        "Создание заявки.\nШаг 1/5. " + _directions_text(),
+        "Создание заявки.\nШаг 1/4. " + _directions_text(),
         reply_markup=direction_keyboard(available_directions()),
     )
 
@@ -346,7 +325,7 @@ async def request_set_direction(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(direction=direction)
     await state.set_state(CreateRequestFlow.waiting_amount)
-    await message.answer("Шаг 2/5. Введите сумму отправки.", reply_markup=_back_cancel_menu())
+    await message.answer("Шаг 2/4. Введите сумму отправки.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_amount)
@@ -357,7 +336,7 @@ async def request_set_amount(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(amount=amount)
     await state.set_state(CreateRequestFlow.waiting_full_name)
-    await message.answer("Шаг 3/5. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
+    await message.answer("Шаг 3/4. Введите ФИО получателя.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_full_name)
@@ -367,19 +346,8 @@ async def request_set_full_name(message: Message, state: FSMContext) -> None:
         await message.answer("Введите полное ФИО, минимум 5 символов.")
         return
     await state.update_data(request_full_name=full_name)
-    await state.set_state(CreateRequestFlow.waiting_phone)
-    await message.answer("Шаг 4/5. Введите номер телефона для связи.", reply_markup=_back_cancel_menu())
-
-
-@router.message(CreateRequestFlow.waiting_phone)
-async def request_set_phone(message: Message, state: FSMContext) -> None:
-    phone = _parse_phone(message.text or "")
-    if phone is None:
-        await message.answer("Введите корректный номер телефона, например +79991234567.")
-        return
-    await state.update_data(request_phone=phone)
     await state.set_state(CreateRequestFlow.waiting_requisites)
-    await message.answer("Шаг 5/5. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
+    await message.answer("Шаг 4/4. Отправьте реквизиты для получения средств.", reply_markup=_back_cancel_menu())
 
 
 @router.message(CreateRequestFlow.waiting_requisites)
@@ -393,9 +361,8 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
     direction = data.get("direction")
     amount_raw = data.get("amount")
     request_full_name = data.get("request_full_name")
-    request_phone = data.get("request_phone")
 
-    if not direction or amount_raw is None or not request_full_name or not request_phone:
+    if not direction or amount_raw is None or not request_full_name:
         await state.clear()
         await message.answer(
             "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
@@ -409,7 +376,6 @@ async def request_set_requisites(message: Message, state: FSMContext) -> None:
         direction=direction,
         amount_send=amount_send,
         request_full_name=request_full_name,
-        request_phone=request_phone,
         requisites=requisites,
     )
     if preview is None:
@@ -429,7 +395,7 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
     if choice == EDIT_TEXT:
         await state.set_state(CreateRequestFlow.waiting_direction)
         await message.answer(
-            "Ок, изменяем заявку.\nШаг 1/5. Выберите направление кнопкой ниже.",
+            "Ок, изменяем заявку.\nШаг 1/4. Выберите направление кнопкой ниже.",
             reply_markup=direction_keyboard(available_directions()),
         )
         return
@@ -447,9 +413,8 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
     direction = data.get("direction")
     amount_raw = data.get("amount")
     request_full_name = data.get("request_full_name")
-    request_phone = data.get("request_phone")
     requisites = data.get("request_requisites")
-    if not direction or amount_raw is None or not request_full_name or not request_phone or not requisites:
+    if not direction or amount_raw is None or not request_full_name or not requisites:
         await state.clear()
         await message.answer(
             "Сессия заявки устарела. Пожалуйста, начните заново через кнопку «Создать заявку».",
@@ -469,7 +434,6 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
 
     requisites_for_storage = (
         f"ФИО: {request_full_name}\n"
-        f"Телефон: {request_phone}\n"
         f"Реквизиты: {requisites}"
     )
 
@@ -506,7 +470,6 @@ async def request_confirm(message: Message, state: FSMContext) -> None:
                 f"Получение: {amount_receive}\n"
                 f"Курс: {quote.final_rate:.6f}\n"
                 f"ФИО: {request_full_name}\n"
-                f"Телефон: {request_phone}\n"
                 f"Реквизиты: {requisites}"
             ),
             reply_markup=_operator_request_actions_keyboard(request.id),
