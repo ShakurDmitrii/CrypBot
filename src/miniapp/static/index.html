@@ -1486,7 +1486,13 @@
           <div class="chips" id="quickChips"></div>
 
           <label class="label" id="receiveLabel" for="receiveAmount">Вы получаете</label>
-          <input class="input" id="receiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
+          <input
+            class="input"
+            id="receiveAmount"
+            type="text"
+            inputmode="decimal"
+            placeholder="Можно ввести сумму для обратного расчета"
+          />
           <p class="hint" id="minDealHint"></p>
 
           <div class="kpi-grid">
@@ -1508,6 +1514,7 @@
           ></textarea>
 
           <div class="buttons">
+            <button class="btn" id="exchangeCalcBtn" type="button">Рассчитать</button>
             <button class="btn primary" id="createBtn" type="button">Создать заявку</button>
           </div>
           <div class="status" id="statusLine"></div>
@@ -1531,7 +1538,13 @@
           <input class="input" id="rateCalcSendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
 
           <label class="label" id="rateCalcReceiveLabel" for="rateCalcReceiveAmount">Вы получаете</label>
-          <input class="input" id="rateCalcReceiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
+          <input
+            class="input"
+            id="rateCalcReceiveAmount"
+            type="text"
+            inputmode="decimal"
+            placeholder="Можно ввести сумму для обратного расчета"
+          />
           <p class="hint" id="rateCalcMinDealHint"></p>
 
           <div class="buttons">
@@ -1673,8 +1686,17 @@
       <input class="input" id="floatingCalcSendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
 
       <label class="label" id="floatingCalcReceiveLabel" for="floatingCalcReceiveAmount">Вы получаете</label>
-      <input class="input" id="floatingCalcReceiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
+      <input
+        class="input"
+        id="floatingCalcReceiveAmount"
+        type="text"
+        inputmode="decimal"
+        placeholder="Можно ввести сумму для обратного расчета"
+      />
       <p class="hint" id="floatingCalcMinDealHint"></p>
+      <div class="buttons">
+        <button class="btn" id="floatingCalcRecalcBtn" type="button">Рассчитать</button>
+      </div>
     </section>
 
     <div id="toast" class="toast"></div>
@@ -1815,6 +1837,8 @@
         myRequestsList: document.getElementById("myRequestsList"),
         userChatInput: document.getElementById("userChatInput"),
         userChatSendBtn: document.getElementById("userChatSendBtn"),
+        exchangeCalcBtn: document.getElementById("exchangeCalcBtn"),
+        floatingCalcRecalcBtn: document.getElementById("floatingCalcRecalcBtn"),
         toast: document.getElementById("toast"),
         homeAdminBtn: document.getElementById("homeAdminBtn"),
         navAdminBtn: document.getElementById("navAdminBtn"),
@@ -2140,11 +2164,7 @@
           return "";
         }
         const meta = getDirectionMeta(direction);
-        const approxUsdt = Number(state.minDealUsdtApproxByDirection[direction] || 0);
-        return `Минимальная сделка: ${formatAmount(minAmount, 2)} ${meta.send} (база: ${formatAmount(
-          state.minDealRub,
-          0
-        )} RUB ≈ ${formatAmount(approxUsdt, 2)} USDT). Округление RUB: ${state.roundStepRub}.`;
+        return `Минимальная сделка: ${formatAmount(minAmount, 2)} ${meta.send}. Округление RUB: ${state.roundStepRub}.`;
       }
 
       function updateMinDealHints() {
@@ -2200,10 +2220,31 @@
                   Статус: <b>${escapeHtml(statusLabels[item.status] || item.status || "-")}</b><br/>
                   Создана: ${escapeHtml(createdAt)}
                 </div>
+                <div style="margin-top:10px">
+                  <button class="btn" type="button" data-chat-request-id="${escapeHtml(item.id)}">Написать оператору</button>
+                </div>
               </div>
             `;
           })
           .join("");
+        els.myRequestsList.querySelectorAll("[data-chat-request-id]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const requestId = Number(btn.getAttribute("data-chat-request-id") || "");
+            openChatForRequest(requestId);
+          });
+        });
+      }
+
+      function openChatForRequest(requestId) {
+        if (!Number.isInteger(requestId) || requestId <= 0) {
+          return;
+        }
+        openView("chat");
+        const prefix = `По заявке #${requestId}: `;
+        if (!String(els.userChatInput.value || "").trim()) {
+          els.userChatInput.value = prefix;
+        }
+        els.userChatInput.focus();
       }
 
       async function loadMyRequests(silent = true) {
@@ -2421,7 +2462,6 @@
           chip.textContent = `${formatAmount(amount, 0)} ${meta.send}`;
           chip.addEventListener("click", () => {
             els.sendAmount.value = String(amount);
-            scheduleAutoCalc();
           });
           els.quickChips.appendChild(chip);
         });
@@ -2436,7 +2476,6 @@
         renderQuickChips();
         updateMinDealHints();
         refreshDirectionKpi().catch((e) => showToast(`Ошибка курса: ${e.message}`));
-        scheduleAutoCalc();
       }
 
       function setRateCalcDirection(direction) {
@@ -2446,7 +2485,6 @@
         els.rateCalcReceiveLabel.textContent = `Вы получаете (${meta.receive})`;
         renderRateCalcDirectionButtons();
         updateMinDealHints();
-        scheduleRateCalc();
       }
 
       function setFloatingCalcDirection(direction) {
@@ -2456,7 +2494,6 @@
         els.floatingCalcReceiveLabel.textContent = `Вы получаете (${meta.receive})`;
         renderFloatingCalcDirectionButtons();
         updateMinDealHints();
-        scheduleFloatingCalc();
       }
 
       async function loadDirections() {
@@ -2509,22 +2546,18 @@
         updateMinDealHints();
       }
 
-      function scheduleAutoCalc() {
-        if (state.calcTimer) {
-          clearTimeout(state.calcTimer);
+      async function calculateExchangeManual() {
+        const sendRaw = String(els.sendAmount.value || "").trim();
+        const receiveRaw = String(els.receiveAmount.value || "").trim();
+        if (!sendRaw && !receiveRaw) {
+          els.receiveAmount.value = "";
+          return;
         }
-        state.calcTimer = setTimeout(() => {
-          calculate().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
-        }, 260);
-      }
-
-      function scheduleAutoCalcFromReceive() {
-        if (state.calcReverseTimer) {
-          clearTimeout(state.calcReverseTimer);
+        if (!sendRaw && receiveRaw) {
+          await calculateFromReceive();
+          return;
         }
-        state.calcReverseTimer = setTimeout(() => {
-          calculateFromReceive().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
-        }, 260);
+        await calculate();
       }
 
       async function calculateRateCalc() {
@@ -2552,22 +2585,18 @@
         return result;
       }
 
-      function scheduleRateCalc() {
-        if (state.rateCalcTimer) {
-          clearTimeout(state.rateCalcTimer);
+      async function calculateRateCalcManual() {
+        const sendRaw = String(els.rateCalcSendAmount.value || "").trim();
+        const receiveRaw = String(els.rateCalcReceiveAmount.value || "").trim();
+        if (!sendRaw && !receiveRaw) {
+          els.rateCalcReceiveAmount.value = "";
+          return;
         }
-        state.rateCalcTimer = setTimeout(() => {
-          calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
-        }, 260);
-      }
-
-      function scheduleRateCalcFromReceive() {
-        if (state.rateCalcReverseTimer) {
-          clearTimeout(state.rateCalcReverseTimer);
+        if (!sendRaw && receiveRaw) {
+          await calculateRateCalcFromReceive();
+          return;
         }
-        state.rateCalcReverseTimer = setTimeout(() => {
-          calculateRateCalcFromReceive().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
-        }, 260);
+        await calculateRateCalc();
       }
 
       async function calculateFloatingCalc() {
@@ -2595,30 +2624,23 @@
         return result;
       }
 
-      function scheduleFloatingCalc() {
-        if (state.floatingCalcTimer) {
-          clearTimeout(state.floatingCalcTimer);
+      async function calculateFloatingCalcManual() {
+        const sendRaw = String(els.floatingCalcSendAmount.value || "").trim();
+        const receiveRaw = String(els.floatingCalcReceiveAmount.value || "").trim();
+        if (!sendRaw && !receiveRaw) {
+          els.floatingCalcReceiveAmount.value = "";
+          return;
         }
-        state.floatingCalcTimer = setTimeout(() => {
-          calculateFloatingCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
-        }, 260);
-      }
-
-      function scheduleFloatingCalcFromReceive() {
-        if (state.floatingCalcReverseTimer) {
-          clearTimeout(state.floatingCalcReverseTimer);
+        if (!sendRaw && receiveRaw) {
+          await calculateFloatingCalcFromReceive();
+          return;
         }
-        state.floatingCalcReverseTimer = setTimeout(() => {
-          calculateFloatingCalcFromReceive().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
-        }, 260);
+        await calculateFloatingCalc();
       }
 
       function toggleFloatingCalc(forceOpen = null) {
         const shouldOpen = forceOpen === null ? els.floatingCalc.classList.contains("hidden") : forceOpen;
         els.floatingCalc.classList.toggle("hidden", !shouldOpen);
-        if (shouldOpen) {
-          scheduleFloatingCalc();
-        }
       }
 
       async function createRequest() {
@@ -2724,7 +2746,6 @@
           openView(btn.dataset.open);
           if (btn.dataset.open === "rate") {
             refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
-            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
           }
         });
       });
@@ -2734,7 +2755,6 @@
           openView(btn.dataset.view);
           if (btn.dataset.view === "rate") {
             refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
-            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
           }
         });
       });
@@ -2747,7 +2767,13 @@
         refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
       });
       document.getElementById("rateCalcRecalcBtn").addEventListener("click", () => {
-        calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+        calculateRateCalcManual().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+      });
+      els.exchangeCalcBtn.addEventListener("click", () => {
+        calculateExchangeManual().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
+      });
+      els.floatingCalcRecalcBtn.addEventListener("click", () => {
+        calculateFloatingCalcManual().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
       });
       els.fabCalcBtn.addEventListener("click", () => {
         toggleFloatingCalc();
@@ -2756,12 +2782,27 @@
         toggleFloatingCalc(false);
       });
 
-      els.sendAmount.addEventListener("input", scheduleAutoCalc);
-      els.receiveAmount.addEventListener("input", scheduleAutoCalcFromReceive);
-      els.rateCalcSendAmount.addEventListener("input", scheduleRateCalc);
-      els.rateCalcReceiveAmount.addEventListener("input", scheduleRateCalcFromReceive);
-      els.floatingCalcSendAmount.addEventListener("input", scheduleFloatingCalc);
-      els.floatingCalcReceiveAmount.addEventListener("input", scheduleFloatingCalcFromReceive);
+      const onCalcEnter = (event, action) => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        action().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
+      };
+      els.sendAmount.addEventListener("keydown", (event) =>
+        onCalcEnter(event, async () => {
+          await calculateExchangeManual();
+        })
+      );
+      els.receiveAmount.addEventListener("keydown", (event) =>
+        onCalcEnter(event, async () => {
+          await calculateExchangeManual();
+        })
+      );
+      els.rateCalcSendAmount.addEventListener("keydown", (event) => onCalcEnter(event, calculateRateCalcManual));
+      els.rateCalcReceiveAmount.addEventListener("keydown", (event) => onCalcEnter(event, calculateRateCalcManual));
+      els.floatingCalcSendAmount.addEventListener("keydown", (event) => onCalcEnter(event, calculateFloatingCalcManual));
+      els.floatingCalcReceiveAmount.addEventListener("keydown", (event) => onCalcEnter(event, calculateFloatingCalcManual));
       els.requisites.addEventListener("input", clearStatus);
       els.userChatSendBtn.addEventListener("click", () => {
         sendUserChatMessage().catch((e) => showToast(`Ошибка отправки: ${e.message}`));
@@ -2784,13 +2825,9 @@
       });
 
       loadDirections()
-        .then(() => calculate())
         .then(() => {
           window.setTimeout(() => {
             refreshRate().catch(() => {
-              // loaded on demand
-            });
-            calculateRateCalc().catch(() => {
               // loaded on demand
             });
           }, 120);

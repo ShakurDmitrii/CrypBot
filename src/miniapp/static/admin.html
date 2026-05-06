@@ -395,6 +395,7 @@
           </div>
           <div class="editor-actions">
             <button class="btn primary" id="applyStatusBtn" type="button">Сохранить статус</button>
+            <button class="btn" id="openRequestChatBtn" type="button">Открыть чат по заявке</button>
             <button class="btn danger" id="deleteRequestBtn" type="button">Удалить заявку</button>
           </div>
         </div>
@@ -1142,6 +1143,26 @@
         await loadRequests();
       }
 
+      async function openSelectedRequestChat() {
+        if (!state.accessGranted) {
+          setStatus("Доступ не предоставлен.", true);
+          return;
+        }
+        const selected = state.requests.find((item) => Number(item.id) === Number(state.selectedRequestId));
+        if (!selected) {
+          setStatus("Сначала выберите заявку в таблице.", true);
+          return;
+        }
+        const userTelegramId = Number(selected.telegram_id || 0);
+        if (!Number.isInteger(userTelegramId) || userTelegramId <= 0) {
+          setStatus("У заявки отсутствует Telegram ID пользователя.", true);
+          return;
+        }
+        state.selectedChatUserId = userTelegramId;
+        await loadChatView();
+        setStatus(`Открыт чат по заявке #${selected.id} (user id: ${userTelegramId}).`);
+      }
+
       document.getElementById("loadUsersBtn").addEventListener("click", () => {
         loadUsers().catch((e) => setStatus(`Ошибка загрузки пользователей: ${e.message}`, true));
       });
@@ -1162,6 +1183,9 @@
       });
       document.getElementById("deleteRequestBtn").addEventListener("click", () => {
         deleteSelectedRequest().catch((e) => setStatus(`Ошибка удаления заявки: ${e.message}`, true));
+      });
+      document.getElementById("openRequestChatBtn").addEventListener("click", () => {
+        openSelectedRequestChat().catch((e) => setStatus(`Ошибка открытия чата: ${e.message}`, true));
       });
       adminChatSendBtn.addEventListener("click", () => {
         sendAdminChatMessage().catch((e) => setStatus(`Ошибка отправки сообщения: ${e.message}`, true));
