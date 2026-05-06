@@ -1440,35 +1440,35 @@
         <span class="hero-cloud c4" aria-hidden="true"></span>
         <span class="hero-cloud c5" aria-hidden="true"></span>
         <span class="hero-cloud c6" aria-hidden="true"></span>
-        <h1 class="brand">РќР•Р‘Рћ</h1>
-        <p class="brand-sub">РљСЂРёРїС‚РѕРѕР±РјРµРЅРЅРёРє РІ Р’РѕСЂРѕРЅРµР¶Рµ</p>
+        <h1 class="brand">НЕБО</h1>
+        <p class="brand-sub">Криптообменник в Воронеже</p>
       </header>
 
       <section id="view-home" class="view active">
         <div class="menu">
-          <button class="menu-btn" data-open="exchange">Р‘С‹СЃС‚СЂС‹Р№ РѕР±РјРµРЅ USDT</button>
+          <button class="menu-btn" data-open="exchange">Быстрый обмен USDT</button>
         </div>
         <div class="menu two">
-          <button class="menu-btn" data-open="rate">РљСѓСЂСЃ</button>
-          <button class="menu-btn" data-open="requests">РњРѕРё Р·Р°СЏРІРєРё</button>
-          <button class="menu-btn" data-open="about">Рћ РќРµР±Рµ</button>
+          <button class="menu-btn" data-open="rate">Курс</button>
+          <button class="menu-btn" data-open="requests">Мои заявки</button>
+          <button class="menu-btn" data-open="about">О Небе</button>
         </div>
         <div class="menu">
-          <button class="menu-btn hidden" id="homeAdminBtn" type="button">РџСѓР»СЊС‚ РѕРїРµСЂР°С‚РѕСЂР°</button>
+          <button class="menu-btn hidden" id="homeAdminBtn" type="button">Пульт оператора</button>
         </div>
         <div class="home-guide">
-          <div class="head">РљР°Рє РѕС„РѕСЂРјРёС‚СЊ Р·Р°СЏРІРєСѓ</div>
+          <div class="head">КАК ОФОРМИТЬ ЗАЯВКУ</div>
           <div class="row">
             <span class="n">1</span>
-            <div class="t">РћС‚РєСЂРѕР№С‚Рµ В«Р‘С‹СЃС‚СЂС‹Р№ РѕР±РјРµРЅ USDTВ» Рё РІС‹Р±РµСЂРёС‚Рµ РЅР°РїСЂР°РІР»РµРЅРёРµ.</div>
+            <div class="t">Откройте "Быстрый обмен USDT" и выберите направление.</div>
           </div>
           <div class="row">
             <span class="n">2</span>
-            <div class="t">Р’РІРµРґРёС‚Рµ СЃСѓРјРјСѓ Рё РєСЂРёРїС‚РѕРєРѕС€РµР»РµРє РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ.</div>
+            <div class="t">Введите сумму и криптокошелек для получения.</div>
           </div>
           <div class="row">
             <span class="n">3</span>
-            <div class="t">РќР°Р¶РјРёС‚Рµ В«РЎРѕР·РґР°С‚СЊ Р·Р°СЏРІРєСѓВ» Рё РґРѕР¶РґРёС‚РµСЃСЊ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РѕРїРµСЂР°С‚РѕСЂР°.</div>
+            <div class="t">Нажмите "Создать заявку" и дождитесь подтверждения оператора.</div>
           </div>
         </div>
       </section>
@@ -1515,11 +1515,11 @@
       </section>
 
       <section id="view-rate" class="view">
-        <h2 class="title">РљСѓСЂСЃ</h2>
+        <h2 class="title">Курс</h2>
         <div class="panel">
-          <p class="hint multiline" id="rateInfo">РќР°Р¶РјРёС‚Рµ В«РћР±РЅРѕРІРёС‚СЊВ».</p>
+          <p class="hint multiline" id="rateInfo">Нажмите "Обновить".</p>
           <div class="buttons">
-            <button class="btn primary" id="refreshRateBtn" type="button">РћР±РЅРѕРІРёС‚СЊ</button>
+            <button class="btn primary" id="refreshRateBtn" type="button">Обновить</button>
           </div>
         </div>
         <div class="panel">
@@ -1778,6 +1778,7 @@
         isOperator: false,
         isLiteMode: false,
         minDealUsdt: 100,
+        roundStepRub: 500,
         minAmountByDirection: {},
         calcCache: new Map(),
       };
@@ -1818,6 +1819,35 @@
         navAdminBtn: document.getElementById("navAdminBtn"),
         bottomNav: document.getElementById("bottomNav"),
       };
+
+      function localizeStaticTexts() {
+        const setText = (selector, text) => {
+          const node = document.querySelector(selector);
+          if (node) {
+            node.textContent = text;
+          }
+        };
+
+        setText(".brand", "НЕБО");
+        setText(".brand-sub", "Криптообменник в Воронеже");
+        setText('[data-open="exchange"]', "Быстрый обмен USDT");
+        setText('[data-open="rate"]', "Курс");
+        setText('[data-open="requests"]', "Мои заявки");
+        setText('[data-open="about"]', "О Небе");
+        setText("#homeAdminBtn", "Пульт оператора");
+        setText(".home-guide .head", "КАК ОФОРМИТЬ ЗАЯВКУ");
+
+        const guideRows = document.querySelectorAll(".home-guide .row .t");
+        if (guideRows[0]) {
+          guideRows[0].textContent = 'Откройте "Быстрый обмен USDT" и выберите направление.';
+        }
+        if (guideRows[1]) {
+          guideRows[1].textContent = "Введите сумму и криптокошелек для получения.";
+        }
+        if (guideRows[2]) {
+          guideRows[2].textContent = 'Нажмите "Создать заявку" и дождитесь подтверждения оператора.';
+        }
+      }
 
       function showToast(message) {
         els.toast.textContent = message;
@@ -2006,7 +2036,7 @@
 
       function formatAmount(value, digits = 2) {
         if (!Number.isFinite(value)) {
-          return "вЂ”";
+          return "—";
         }
         return Number(value).toLocaleString("ru-RU", {
           minimumFractionDigits: 0,
@@ -2046,6 +2076,9 @@
         }
         if (Number.isFinite(Number(data.min_deal_usdt))) {
           state.minDealUsdt = Number(data.min_deal_usdt);
+        }
+        if (Number.isFinite(Number(data.round_step_rub))) {
+          state.roundStepRub = Number(data.round_step_rub);
         }
       }
 
@@ -2103,7 +2136,7 @@
           return "";
         }
         const meta = getDirectionMeta(direction);
-        return `РњРёРЅРёРјР°Р»СЊРЅР°СЏ СЃРґРµР»РєР°: ${formatAmount(minAmount, 2)} ${meta.send} (в‰€ ${state.minDealUsdt} USDT)`;
+        return `Минимальная сделка: ${formatAmount(minAmount, 2)} ${meta.send} (≈ ${state.minDealUsdt} USDT). Округление RUB: ${state.roundStepRub}.`;
       }
 
       function updateMinDealHints() {
@@ -2135,29 +2168,29 @@
 
       function renderMyRequests() {
         const statusLabels = {
-          new: "РќРѕРІР°СЏ",
-          waiting_payment: "РћР¶РёРґР°РµС‚ РѕРїР»Р°С‚Сѓ",
-          payment_received: "РћРїР»Р°С‚Р° РїРѕР»СѓС‡РµРЅР°",
-          processing: "Р’ РѕР±СЂР°Р±РѕС‚РєРµ",
-          done: "Р’С‹РїРѕР»РЅРµРЅР°",
-          canceled: "РћС‚РјРµРЅРµРЅР°",
-          disputed: "РЎРїРѕСЂ",
+          new: "Новая",
+          waiting_payment: "Ожидает оплату",
+          payment_received: "Оплата получена",
+          processing: "В обработке",
+          done: "Выполнена",
+          canceled: "Отменена",
+          disputed: "Спор",
         };
         if (!state.myRequests.length) {
-          els.myRequestsList.innerHTML = "<div class='chat-empty'>Р—Р°СЏРІРѕРє РїРѕРєР° РЅРµС‚.</div>";
+          els.myRequestsList.innerHTML = "<div class='chat-empty'>Заявок пока нет.</div>";
           return;
         }
         els.myRequestsList.innerHTML = state.myRequests
           .map((item) => {
-            const createdAt = item.created_at ? new Date(item.created_at).toLocaleString("ru-RU") : "вЂ”";
+            const createdAt = item.created_at ? new Date(item.created_at).toLocaleString("ru-RU") : "—";
             return `
               <div class="chat-bubble" style="max-width:100%">
                 <div class="chat-text">
-                  <b>#${escapeHtml(item.id)}</b> вЂў ${escapeHtml(item.direction || "-")}<br/>
-                  РћС‚РїСЂР°РІРєР°: <b>${escapeHtml(formatAmount(Number(item.amount_send), 2))}</b><br/>
-                  РџРѕР»СѓС‡РµРЅРёРµ: <b>${escapeHtml(formatAmount(Number(item.amount_receive), 2))}</b><br/>
-                  РЎС‚Р°С‚СѓСЃ: <b>${escapeHtml(statusLabels[item.status] || item.status || "-")}</b><br/>
-                  РЎРѕР·РґР°РЅР°: ${escapeHtml(createdAt)}
+                  <b>#${escapeHtml(item.id)}</b> • ${escapeHtml(item.direction || "-")}<br/>
+                  Отправка: <b>${escapeHtml(formatAmount(Number(item.amount_send), 2))}</b><br/>
+                  Получение: <b>${escapeHtml(formatAmount(Number(item.amount_receive), 2))}</b><br/>
+                  Статус: <b>${escapeHtml(statusLabels[item.status] || item.status || "-")}</b><br/>
+                  Создана: ${escapeHtml(createdAt)}
                 </div>
               </div>
             `;
@@ -2617,14 +2650,14 @@
 
       async function refreshRate() {
         if (!state.directions.length) {
-          els.rateInfo.textContent = "РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РЅР°РїСЂР°РІР»РµРЅРёР№.";
+          els.rateInfo.textContent = "Нет доступных направлений.";
           return;
         }
         const preferredDirections = ["RUB->USDT", "USDT->RUB"];
         const existingDirectionIds = new Set(state.directions.map((item) => item.id));
         const selected = preferredDirections.filter((id) => existingDirectionIds.has(id));
         if (!selected.length) {
-          els.rateInfo.textContent = "РќР°РїСЂР°РІР»РµРЅРёСЏ RUB/USDT РІСЂРµРјРµРЅРЅРѕ РЅРµРґРѕСЃС‚СѓРїРЅС‹.";
+          els.rateInfo.textContent = "Направления RUB/USDT временно недоступны.";
           return;
         }
 
@@ -2637,9 +2670,9 @@
 
         const lines = quotes.map((item) => {
           if (item.directionId === "RUB->USDT") {
-            return `RUB в†’ USDT: 1 RUB = ${formatAmount(item.finalRate, 2)} USDT`;
+            return `RUB -> USDT: 1 RUB = ${formatAmount(item.finalRate, 2)} USDT`;
           }
-          return `USDT в†’ RUB: 1 USDT = ${formatAmount(item.finalRate, 2)} RUB`;
+          return `USDT -> RUB: 1 USDT = ${formatAmount(item.finalRate, 2)} RUB`;
         });
         els.rateInfo.textContent = lines.join("\n");
       }
@@ -2733,6 +2766,7 @@
         sendUserChatMessage().catch((e) => showToast(`РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё: ${e.message}`));
       });
 
+      localizeStaticTexts();
       updateContactFormState();
       initPerformanceMode();
       animateViewContent(document.getElementById("view-home"));

@@ -364,25 +364,25 @@
   <body>
     <main class="app">
       <section class="header">
-        <h1 class="title">РћРєРЅРѕ РѕРїРµСЂР°С‚РѕСЂР°</h1>
-        <div class="meta" id="meta">РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїР°...</div>
+        <h1 class="title">Окно оператора</h1>
+        <div class="meta" id="meta">Проверка доступа...</div>
         <div class="toolbar">
-          <button class="btn primary active" id="loadRequestsBtn" type="button">Р—Р°СЏРІРєРё</button>
-          <button class="btn primary" id="loadUsersBtn" type="button">РџРѕР»СЊР·РѕРІР°С‚РµР»Рё</button>
-          <button class="btn primary" id="loadHistoryBtn" type="button">РСЃС‚РѕСЂРёСЏ СЃС‚Р°С‚СѓСЃРѕРІ</button>
-          <button class="btn primary" id="loadChatBtn" type="button">Р§Р°С‚</button>
+          <button class="btn primary active" id="loadRequestsBtn" type="button">Заявки</button>
+          <button class="btn primary" id="loadUsersBtn" type="button">Пользователи</button>
+          <button class="btn primary" id="loadHistoryBtn" type="button">История статусов</button>
+          <button class="btn primary" id="loadChatBtn" type="button">Чат</button>
           <button class="btn primary" id="loadSettingsBtn" type="button">Настройки</button>
-          <button class="btn" id="backBtn" type="button">РќР° РіР»Р°РІРЅСѓСЋ РјРёРЅРёР°РїРїСѓ</button>
+          <button class="btn" id="backBtn" type="button">На главную миниаппу</button>
         </div>
       </section>
 
       <section class="panel">
-        <div class="status" id="status">РћР¶РёРґР°РЅРёРµ...</div>
+        <div class="status" id="status">Ожидание...</div>
         <div class="tools" id="contextTools"></div>
         <div class="table-wrap" id="tableWrap"></div>
 
         <div class="request-editor hidden" id="requestEditorWrap">
-          <div class="editor-head" id="editorHead">Р’С‹Р±РµСЂРёС‚Рµ Р·Р°СЏРІРєСѓ РІ С‚Р°Р±Р»РёС†Рµ</div>
+          <div class="editor-head" id="editorHead">Выберите заявку в таблице</div>
           <div class="editor-grid">
             <select class="select" id="editorStatus"></select>
             <input
@@ -436,15 +436,31 @@
       ];
 
       const STATUS_LABELS = {
-        all: "Р’СЃРµ",
-        new: "РќРѕРІР°СЏ",
-        waiting_payment: "РћР¶РёРґР°РµС‚ РѕРїР»Р°С‚Сѓ",
-        payment_received: "РћРїР»Р°С‚Р° РїРѕР»СѓС‡РµРЅР°",
-        processing: "Р’ РѕР±СЂР°Р±РѕС‚РєРµ",
-        done: "Р—Р°РІРµСЂС€РµРЅР°",
-        canceled: "РћС‚РјРµРЅРµРЅР°",
-        disputed: "РЎРїРѕСЂ",
+        all: "Все",
+        new: "Новая",
+        waiting_payment: "Ожидает оплату",
+        payment_received: "Оплата получена",
+        processing: "В обработке",
+        done: "Завершена",
+        canceled: "Отменена",
+        disputed: "Спор",
       };
+
+      function localizeAdminStaticTexts() {
+        const setText = (selector, text) => {
+          const node = document.querySelector(selector);
+          if (node) {
+            node.textContent = text;
+          }
+        };
+        setText(".title", "Окно оператора");
+        setText("#loadRequestsBtn", "Заявки");
+        setText("#loadUsersBtn", "Пользователи");
+        setText("#loadHistoryBtn", "История статусов");
+        setText("#loadChatBtn", "Чат");
+        setText("#loadSettingsBtn", "Настройки");
+        setText("#backBtn", "На главную миниаппу");
+      }
 
       function parseTelegramIdFromQuery() {
         const p = new URLSearchParams(window.location.search);
@@ -465,7 +481,7 @@
         if (fromQuery) {
           return fromQuery;
         }
-        const raw = prompt("Р’РІРµРґРёС‚Рµ Telegram ID РѕРїРµСЂР°С‚РѕСЂР°");
+        const raw = prompt("Введите Telegram ID оператора");
         if (!raw) {
           return null;
         }
@@ -825,27 +841,37 @@
 
       function renderSettingsView(settingsData) {
         setView("settings");
-        const options = (settingsData.allowed_min_deal_usdt || [])
+        const minDealOptions = (settingsData.allowed_min_deal_usdt || [])
           .map((value) => {
             const selected = Number(value) === Number(settingsData.min_deal_usdt) ? " selected" : "";
             return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} USDT</option>`;
+          })
+          .join("");
+        const roundStepOptions = (settingsData.allowed_round_step_rub || [])
+          .map((value) => {
+            const selected = Number(value) === Number(settingsData.round_step_rub) ? " selected" : "";
+            return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(value)} RUB</option>`;
           })
           .join("");
         contextToolsEl.innerHTML = `
           <div class="panel" style="margin-top:0">
             <div class="editor-head">Настройки оператора</div>
             <label class="label" for="settingsMinDealUsdt">Минимальная сделка (USDT)</label>
-            <select class="select" id="settingsMinDealUsdt">${options}</select>
+            <select class="select" id="settingsMinDealUsdt">${minDealOptions}</select>
+            <label class="label" for="settingsRoundStepRub">Шаг автоокругления RUB</label>
+            <select class="select" id="settingsRoundStepRub">${roundStepOptions}</select>
             <div class="buttons">
               <button class="btn primary" id="saveSettingsBtn" type="button">Сохранить</button>
             </div>
-            <p class="hint">Для рублевой стороны суммы автоматически округляются до 500.</p>
+            <p class="hint">Выберите минимальную сделку и шаг округления для рублевой стороны.</p>
           </div>
         `;
         document.getElementById("saveSettingsBtn").addEventListener("click", () => {
           saveSettings().catch((e) => setStatus(`Ошибка сохранения настроек: ${e.message}`, true));
         });
-        setStatus(`Текущая минимальная сделка: ${settingsData.min_deal_usdt} USDT.`);
+        setStatus(
+          `Текущие настройки: минимум ${settingsData.min_deal_usdt} USDT, округление ${settingsData.round_step_rub} RUB.`
+        );
       }
 
       function renderAdminChatUsers() {
@@ -1042,12 +1068,18 @@
           return;
         }
         const minDealSelect = document.getElementById("settingsMinDealUsdt");
-        if (!minDealSelect) {
+        const roundStepSelect = document.getElementById("settingsRoundStepRub");
+        if (!minDealSelect || !roundStepSelect) {
           return;
         }
         const minDealUsdt = Number(minDealSelect.value);
+        const roundStepRub = Number(roundStepSelect.value);
         if (!Number.isFinite(minDealUsdt)) {
           setStatus("Некорректное значение минимальной сделки.", true);
+          return;
+        }
+        if (!Number.isFinite(roundStepRub)) {
+          setStatus("Некорректное значение шага округления.", true);
           return;
         }
         setStatus("Сохраняю настройки...");
@@ -1055,6 +1087,7 @@
           method: "PATCH",
           body: JSON.stringify({
             min_deal_usdt: minDealUsdt,
+            round_step_rub: roundStepRub,
           }),
         });
         state.appSettings = data;
@@ -1144,6 +1177,8 @@
       document.getElementById("backBtn").addEventListener("click", () => {
         window.location.href = "/";
       });
+
+      localizeAdminStaticTexts();
 
       checkAccess().then(() => {
         if (state.accessGranted) {
