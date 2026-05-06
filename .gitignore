@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
 .env
+docker-compose.yml
 bot.db
