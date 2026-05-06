@@ -59,6 +59,17 @@ def request_confirm_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+def request_edit_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Направление"), KeyboardButton(text="Сумма")],
+            [KeyboardButton(text="ФИО"), KeyboardButton(text="Реквизиты")],
+            [KeyboardButton(text="Назад"), KeyboardButton(text="Отмена")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 def direction_keyboard(directions: list[str]) -> ReplyKeyboardMarkup:
     rows: list[list[KeyboardButton]] = []
     pair_row: list[KeyboardButton] = []
