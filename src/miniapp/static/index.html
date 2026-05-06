@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>РќР•Р‘Рћ РћР±РјРµРЅ</title>
+    <title>НЕБО Обмен</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
@@ -1425,11 +1425,11 @@
       <span class="sky-cloud sc4"><span class="sky-token">TON</span></span>
       <span class="sky-cloud sc5"><span class="sky-token">RUB</span></span>
       <span class="sky-coins">
-        <span class="run-coin coin-a"><b>в‚ї</b></span>
-        <span class="run-coin coin-b"><b>в‚®</b></span>
-        <span class="run-coin coin-c"><b>Оћ</b></span>
-        <span class="run-coin coin-d"><b>в‚ё</b></span>
-        <span class="run-coin coin-e"><b>в‚Ѕ</b></span>
+        <span class="run-coin coin-a"><b>₿</b></span>
+        <span class="run-coin coin-b"><b>₮</b></span>
+        <span class="run-coin coin-c"><b>◈</b></span>
+        <span class="run-coin coin-d"><b>$</b></span>
+        <span class="run-coin coin-e"><b>₽</b></span>
       </span>
     </div>
     <main class="app">
@@ -1474,41 +1474,41 @@
       </section>
 
       <section id="view-exchange" class="view">
-        <h2 class="title">РћС„РѕСЂРјР»РµРЅРёРµ Р·Р°СЏРІРєРё</h2>
-        <p class="hint">РњРёРЅРёРјСѓРј РґРµР№СЃС‚РІРёР№: РЅР°РїСЂР°РІР»РµРЅРёРµ, СЃСѓРјРјР°, РєСЂРёРїС‚РѕРєРѕС€РµР»РµРє.</p>
+        <h2 class="title">Оформление заявки</h2>
+        <p class="hint">Минимум действий: направление, сумма, криптокошелек.</p>
 
         <div class="panel">
           <div class="segment" id="directionSegment"></div>
 
-          <label class="label" id="sendLabel" for="sendAmount">Р’С‹ РѕС‚РїСЂР°РІР»СЏРµС‚Рµ</label>
-          <input class="input" id="sendAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+          <label class="label" id="sendLabel" for="sendAmount">Вы отправляете</label>
+          <input class="input" id="sendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
 
           <div class="chips" id="quickChips"></div>
 
-          <label class="label" id="receiveLabel" for="receiveAmount">Р’С‹ РїРѕР»СѓС‡Р°РµС‚Рµ</label>
-          <input class="input" id="receiveAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+          <label class="label" id="receiveLabel" for="receiveAmount">Вы получаете</label>
+          <input class="input" id="receiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
           <p class="hint" id="minDealHint"></p>
 
           <div class="kpi-grid">
             <div class="kpi">
-              <div class="k">РљСѓСЂСЃ</div>
-              <div class="v" id="finalRateKpi">вЂ”</div>
+              <div class="k">Курс</div>
+              <div class="v" id="finalRateKpi">—</div>
             </div>
           </div>
         </div>
 
         <div class="panel">
-          <label class="label" for="requisites">РљСЂРёРїС‚РѕРєРѕС€РµР»РµРє РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ</label>
+          <label class="label" for="requisites">Криптокошелек для получения</label>
           <textarea
             class="input"
             id="requisites"
             rows="3"
             maxlength="512"
-            placeholder="РќР°РїСЂРёРјРµСЂ: TRC20 (USDT) TQ..."
+            placeholder="Например: TRC20 (USDT) TQ..."
           ></textarea>
 
           <div class="buttons">
-            <button class="btn primary" id="createBtn" type="button">РЎРѕР·РґР°С‚СЊ Р·Р°СЏРІРєСѓ</button>
+            <button class="btn primary" id="createBtn" type="button">Создать заявку</button>
           </div>
           <div class="status" id="statusLine"></div>
         </div>
@@ -1523,58 +1523,58 @@
           </div>
         </div>
         <div class="panel">
-          <h3 class="title" style="font-size: 20px; margin-bottom: 4px">РљР°Р»СЊРєСѓР»СЏС‚РѕСЂ</h3>
-          <p class="hint">Р‘С‹СЃС‚СЂС‹Р№ РїРµСЂРµСЃС‡РµС‚ РїРѕ С‚РµРєСѓС‰РµРјСѓ РєСѓСЂСЃСѓ.</p>
+          <h3 class="title" style="font-size: 20px; margin-bottom: 4px">Калькулятор</h3>
+          <p class="hint">Быстрый пересчет по текущему курсу.</p>
           <div class="segment" id="rateCalcDirectionSegment"></div>
 
-          <label class="label" id="rateCalcSendLabel" for="rateCalcSendAmount">Р’С‹ РѕС‚РїСЂР°РІР»СЏРµС‚Рµ</label>
-          <input class="input" id="rateCalcSendAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+          <label class="label" id="rateCalcSendLabel" for="rateCalcSendAmount">Вы отправляете</label>
+          <input class="input" id="rateCalcSendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
 
-          <label class="label" id="rateCalcReceiveLabel" for="rateCalcReceiveAmount">Р’С‹ РїРѕР»СѓС‡Р°РµС‚Рµ</label>
-          <input class="input" id="rateCalcReceiveAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+          <label class="label" id="rateCalcReceiveLabel" for="rateCalcReceiveAmount">Вы получаете</label>
+          <input class="input" id="rateCalcReceiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
           <p class="hint" id="rateCalcMinDealHint"></p>
 
           <div class="buttons">
-            <button class="btn" id="rateCalcRecalcBtn" type="button">Р Р°СЃСЃС‡РёС‚Р°С‚СЊ</button>
+            <button class="btn" id="rateCalcRecalcBtn" type="button">Рассчитать</button>
           </div>
         </div>
       </section>
 
       <section id="view-chat" class="view">
-        <h2 class="title">Р§Р°С‚ СЃ РѕРїРµСЂР°С‚РѕСЂРѕРј</h2>
-        <p class="hint">РџРёС€РёС‚Рµ РІРѕРїСЂРѕСЃС‹ РїРѕ Р·Р°СЏРІРєРµ Рё РєСѓСЂСЃСѓ. РћРїРµСЂР°С‚РѕСЂ РѕС‚РІРµС‡Р°РµС‚ РІ СЌС‚РѕРј РѕРєРЅРµ.</p>
+        <h2 class="title">Чат с оператором</h2>
+        <p class="hint">Пишите вопросы по заявке и курсу. Оператор отвечает в этом окне.</p>
         <div class="panel chat-shell">
           <div class="chat-list" id="userChatList">
-            <div class="chat-empty">Р”РёР°Р»РѕРі РїРѕРєР° РїСѓСЃС‚. РћС‚РїСЂР°РІСЊС‚Рµ РїРµСЂРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ.</div>
+            <div class="chat-empty">Диалог пока пуст. Отправьте первое сообщение.</div>
           </div>
           <div class="chat-compose">
-            <input class="input" id="userChatInput" type="text" maxlength="2000" placeholder="Р’РІРµРґРёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ..." />
-            <button class="btn primary" id="userChatSendBtn" type="button">РћС‚РїСЂР°РІРёС‚СЊ</button>
+            <input class="input" id="userChatInput" type="text" maxlength="2000" placeholder="Введите сообщение..." />
+            <button class="btn primary" id="userChatSendBtn" type="button">Отправить</button>
           </div>
         </div>
       </section>
 
       <section id="view-requests" class="view">
-        <h2 class="title">РњРѕРё Р·Р°СЏРІРєРё</h2>
-        <p class="hint">Р—РґРµСЃСЊ РѕС‚РѕР±СЂР°Р¶Р°СЋС‚СЃСЏ РІР°С€Рё Р·Р°СЏРІРєРё Рё РёС… С‚РµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ.</p>
+        <h2 class="title">Мои заявки</h2>
+        <p class="hint">Здесь отображаются ваши заявки и их текущий статус.</p>
         <div class="panel">
           <div class="chat-list" id="myRequestsList">
-            <div class="chat-empty">Р—Р°СЏРІРѕРє РїРѕРєР° РЅРµС‚.</div>
+            <div class="chat-empty">Заявок пока нет.</div>
           </div>
         </div>
       </section>
 
       <section id="view-about" class="view about">
-        <h2 class="title">Рћ РЅР°СЃ</h2>
+        <h2 class="title">О нас</h2>
         <div class="panel">
-          <p>Р—Р°РЅРёРјР°РµРјСЃСЏ РѕР±РјРµРЅРѕРј РєСЂРёРїС‚РѕРІР°Р»СЋС‚ Р±РѕР»РµРµ 3 Р»РµС‚.</p>
-          <p>Р Р°Р±РѕС‚Р°РµРј 24/7. РџСЂРё РїРµСЂРІРѕРј РІРёР·РёС‚Рµ РІ РѕС„РёСЃ РїРѕС‚СЂРµР±СѓРµС‚СЃСЏ РїР°СЃРїРѕСЂС‚.</p>
-          <p>Р Р°Р±РѕС‚Р°РµРј С‚РѕР»СЊРєРѕ Р·Р° РЅР°Р»РёС‡РЅС‹Рµ СЂСѓР±Р»Рё.</p>
-          <p>РњС‹ СЂР°Р±РѕС‚Р°РµРј СЃС‚РѕР» РІ СЃС‚РѕР», РЅРµ С…СЂР°РЅРёРј РІР°С€Рё СЃСЂРµРґСЃС‚РІР° Сѓ СЃРµР±СЏ.</p>
-          <p>РЈ РЅР°СЃ РјРѕР¶РЅРѕ РєСѓРїРёС‚СЊ USDT Р±РµР· РєРѕРјРёСЃСЃРёРё РїРѕ РѕРґРЅРѕРјСѓ РёР· Р»СѓС‡С€РёС… РєСѓСЂСЃРѕРІ РІ РњРѕСЃРєРІРµ.</p>
-          <p>РќР°С€ Р°РґСЂРµСЃ: Рі. РњРѕСЃРєРІР°, РџСЂРµСЃРЅРµРЅСЃРєР°СЏ РЅР°Р±РµСЂРµР¶РЅР°СЏ, 12, Р‘Р°С€РЅСЏ Р¤РµРґРµСЂР°С†РёСЏ Р’РѕСЃС‚РѕРє, СЌС‚Р°Р¶ 11.</p>
-          <p>Р”Р»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РїСЂРѕРїСѓСЃРєР° РІ РѕС„РёСЃ Рё РїРѕРєСѓРїРєРё USDT СЃРѕР·РґР°Р№С‚Рµ Р·Р°СЏРІРєСѓ С‡РµСЂРµР· Р±РѕС‚Р°.</p>
-          <p>Р“РѕСЃС‚РµРІРѕР№ РїСЂРѕРїСѓСЃРє: РЅР° -1 СЌС‚Р°Р¶Рµ СЃ 8:00 РґРѕ 19:00 Рё РЅР° 1 СЌС‚Р°Р¶Рµ СЃ 19:00 РґРѕ 8:00.</p>
+          <p>Занимаемся обменом криптовалют более 3 лет.</p>
+          <p>Работаем 24/7. При первом визите в офис потребуется паспорт.</p>
+          <p>Работаем только за наличные рубли.</p>
+          <p>Мы работаем стол в стол, не храним ваши средства у себя.</p>
+          <p>У нас можно купить USDT без комиссии по одному из лучших курсов в Москве.</p>
+          <p>Наш адрес: г. Москва, Пресненская набережная, 12, Башня Федерация Восток, этаж 11.</p>
+          <p>Для получения пропуска в офис и покупки USDT создайте заявку через бота.</p>
+          <p>Гостевой пропуск: на -1 этаже с 8:00 до 19:00 и на 1 этаже с 19:00 до 8:00.</p>
           <a
             class="map-link"
             href="https://yandex.ru/maps/?text=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%2C%20%D0%9F%D1%80%D0%B5%D1%81%D0%BD%D0%B5%D0%BD%D1%81%D0%BA%D0%B0%D1%8F%20%D0%BD%D0%B0%D0%B1%D0%B5%D1%80%D0%B5%D0%B6%D0%BD%D0%B0%D1%8F%2012%2C%20%D0%91%D0%B0%D1%88%D0%BD%D1%8F%20%D0%A4%D0%B5%D0%B4%D0%B5%D1%80%D0%B0%D1%86%D0%B8%D1%8F%20%D0%92%D0%BE%D1%81%D1%82%D0%BE%D0%BA"
@@ -1583,9 +1583,9 @@
           >
             <img
               src="https://static-maps.yandex.ru/1.x/?lang=ru_RU&ll=37.5373,55.7497&z=16&size=450,220&l=map&pt=37.5373,55.7497,pm2rdm"
-              alt="Р Р°СЃРїРѕР»РѕР¶РµРЅРёРµ РѕС„РёСЃР° РќР•Р‘Рћ РЅР° РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С…"
+              alt="Расположение офиса НЕБО на Яндекс Картах"
             />
-            <span class="cap">РћС‚РєСЂС‹С‚СЊ РѕС„РёСЃ РІ РЇРЅРґРµРєСЃ РљР°СЂС‚Р°С…</span>
+            <span class="cap">Открыть офис в Яндекс Картах</span>
           </a>
         </div>
       </section>
@@ -1647,7 +1647,7 @@
       </button>
     </nav>
 
-    <button class="fab-calc" id="fabCalcBtn" type="button" aria-label="РљР°Р»СЊРєСѓР»СЏС‚РѕСЂ" title="РљР°Р»СЊРєСѓР»СЏС‚РѕСЂ">
+    <button class="fab-calc" id="fabCalcBtn" type="button" aria-label="Калькулятор" title="Калькулятор">
       <span class="nav-icon" aria-hidden="true">
         <svg class="calc-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="4" y="2.8" width="16" height="18.4" rx="3" stroke="currentColor" stroke-width="1.7" />
@@ -1664,16 +1664,16 @@
 
     <section class="floating-calc hidden" id="floatingCalc">
       <div class="floating-calc-head">
-        <h3 class="floating-calc-title">РљР°Р»СЊРєСѓР»СЏС‚РѕСЂ</h3>
-        <button class="floating-calc-close" id="floatingCalcCloseBtn" type="button">РЎРєСЂС‹С‚СЊ</button>
+        <h3 class="floating-calc-title">Калькулятор</h3>
+        <button class="floating-calc-close" id="floatingCalcCloseBtn" type="button">Скрыть</button>
       </div>
       <div class="segment" id="floatingCalcDirectionSegment"></div>
 
-      <label class="label" id="floatingCalcSendLabel" for="floatingCalcSendAmount">Р’С‹ РѕС‚РїСЂР°РІР»СЏРµС‚Рµ</label>
-      <input class="input" id="floatingCalcSendAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+      <label class="label" id="floatingCalcSendLabel" for="floatingCalcSendAmount">Вы отправляете</label>
+      <input class="input" id="floatingCalcSendAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
 
-      <label class="label" id="floatingCalcReceiveLabel" for="floatingCalcReceiveAmount">Р’С‹ РїРѕР»СѓС‡Р°РµС‚Рµ</label>
-      <input class="input" id="floatingCalcReceiveAmount" type="text" inputmode="decimal" placeholder="РќР°РїСЂРёРјРµСЂ, 1000" />
+      <label class="label" id="floatingCalcReceiveLabel" for="floatingCalcReceiveAmount">Вы получаете</label>
+      <input class="input" id="floatingCalcReceiveAmount" type="text" inputmode="decimal" placeholder="Например, 1000" />
       <p class="hint" id="floatingCalcMinDealHint"></p>
     </section>
 
@@ -2147,7 +2147,7 @@
 
       function renderUserChatMessages() {
         if (!state.chatItems.length) {
-          els.userChatList.innerHTML = "<div class='chat-empty'>Р”РёР°Р»РѕРі РїРѕРєР° РїСѓСЃС‚. РћС‚РїСЂР°РІСЊС‚Рµ РїРµСЂРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ.</div>";
+          els.userChatList.innerHTML = "<div class='chat-empty'>Диалог пока пуст. Отправьте первое сообщение.</div>";
           return;
         }
         els.userChatList.innerHTML = state.chatItems
@@ -2202,7 +2202,7 @@
         const telegramId = await ensureTelegramId();
         if (!telegramId) {
           if (!silent) {
-            showToast("РћС‚РєСЂРѕР№С‚Рµ РјРёРЅРёР°РїРїСѓ С‡РµСЂРµР· Telegram-Р±РѕС‚Р°");
+            showToast("Откройте миниаппу через Telegram-бота");
           }
           return;
         }
@@ -2215,7 +2215,7 @@
         const telegramId = await ensureTelegramId();
         if (!telegramId) {
           if (!silent) {
-            showToast("РћС‚РєСЂРѕР№С‚Рµ РјРёРЅРёР°РїРїСѓ С‡РµСЂРµР· Telegram-Р±РѕС‚Р°");
+            showToast("Откройте миниаппу через Telegram-бота");
           }
           return;
         }
@@ -2247,7 +2247,7 @@
       async function sendUserChatMessage() {
         const telegramId = await ensureTelegramId();
         if (!telegramId) {
-          showToast("РћС‚РєСЂРѕР№С‚Рµ РјРёРЅРёР°РїРїСѓ С‡РµСЂРµР· Telegram-Р±РѕС‚Р°");
+          showToast("Откройте миниаппу через Telegram-бота");
           return;
         }
         const text = String(els.userChatInput.value || "").trim();
@@ -2273,12 +2273,12 @@
 
       function onViewChanged(view) {
         if (view === "chat") {
-          loadUserChat(false).catch((e) => showToast(`РћС€РёР±РєР° С‡Р°С‚Р°: ${e.message}`));
+          loadUserChat(false).catch((e) => showToast(`Ошибка чата: ${e.message}`));
           startUserChatPolling();
           return;
         }
         if (view === "requests") {
-          loadMyRequests(false).catch((e) => showToast(`РћС€РёР±РєР° Р·Р°СЏРІРѕРє: ${e.message}`));
+          loadMyRequests(false).catch((e) => showToast(`Ошибка заявок: ${e.message}`));
           stopUserChatPolling();
           return;
         }
@@ -2455,7 +2455,7 @@
         const data = await api("/api/directions");
         state.directions = data.items || [];
         if (!state.directions.length) {
-          throw new Error("РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РЅР°РїСЂР°РІР»РµРЅРёР№");
+          throw new Error("Нет доступных направлений");
         }
         setDirection(state.directions[0].id);
         setRateCalcDirection(state.directions[0].id);
@@ -2506,7 +2506,7 @@
           clearTimeout(state.calcTimer);
         }
         state.calcTimer = setTimeout(() => {
-          calculate().catch((e) => setStatus(`РћС€РёР±РєР° СЂР°СЃС‡РµС‚Р°: ${e.message}`, false));
+          calculate().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
         }, 260);
       }
 
@@ -2515,7 +2515,7 @@
           clearTimeout(state.calcReverseTimer);
         }
         state.calcReverseTimer = setTimeout(() => {
-          calculateFromReceive().catch((e) => setStatus(`РћС€РёР±РєР° СЂР°СЃС‡РµС‚Р°: ${e.message}`, false));
+          calculateFromReceive().catch((e) => setStatus(`Ошибка расчета: ${e.message}`, false));
         }, 260);
       }
 
@@ -2549,7 +2549,7 @@
           clearTimeout(state.rateCalcTimer);
         }
         state.rateCalcTimer = setTimeout(() => {
-          calculateRateCalc().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+          calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
         }, 260);
       }
 
@@ -2558,7 +2558,7 @@
           clearTimeout(state.rateCalcReverseTimer);
         }
         state.rateCalcReverseTimer = setTimeout(() => {
-          calculateRateCalcFromReceive().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+          calculateRateCalcFromReceive().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
         }, 260);
       }
 
@@ -2592,7 +2592,7 @@
           clearTimeout(state.floatingCalcTimer);
         }
         state.floatingCalcTimer = setTimeout(() => {
-          calculateFloatingCalc().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+          calculateFloatingCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
         }, 260);
       }
 
@@ -2601,7 +2601,7 @@
           clearTimeout(state.floatingCalcReverseTimer);
         }
         state.floatingCalcReverseTimer = setTimeout(() => {
-          calculateFloatingCalcFromReceive().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+          calculateFloatingCalcFromReceive().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
         }, 260);
       }
 
@@ -2616,17 +2616,17 @@
       async function createRequest() {
         const telegramId = await ensureTelegramId();
         if (!telegramId) {
-          setStatus("РћС‚РєСЂРѕР№С‚Рµ РјРёРЅРё-Р°РїРїСѓ С‡РµСЂРµР· Telegram-Р±РѕС‚Р°.", false);
+          setStatus("Откройте мини-аппу через Telegram-бота.", false);
           return;
         }
         const amount = parseAmount(els.sendAmount.value);
         if (amount === null) {
-          setStatus("Р’РІРµРґРёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСѓРјРјСѓ.", false);
+          setStatus("Введите корректную сумму.", false);
           return;
         }
         const requisites = els.requisites.value.trim();
         if (!requisites) {
-          setStatus("Р’РІРµРґРёС‚Рµ РєСЂРёРїС‚РѕРєРѕС€РµР»РµРє РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ.", false);
+          setStatus("Введите криптокошелек для получения.", false);
           return;
         }
         const data = await api("/api/requests", {
@@ -2640,9 +2640,9 @@
             user_requisites: requisites,
           }),
         });
-        const operatorLine = data.operator_username ? `\nРћРїРµСЂР°С‚РѕСЂ: ${data.operator_username}` : "";
-        setStatus(`Р—Р°СЏРІРєР° #${data.id} РїСЂРёРЅСЏС‚Р°.${operatorLine}\nРњС‹ СѓРІРµРґРѕРјРёРј РІР°СЃ РїСЂРё СЃРјРµРЅРµ СЃС‚Р°С‚СѓСЃР°.`, true);
-        showToast(`Р—Р°СЏРІРєР° #${data.id} РїСЂРёРЅСЏС‚Р°`);
+        const operatorLine = data.operator_username ? `\nОператор: ${data.operator_username}` : "";
+        setStatus(`Заявка #${data.id} принята.${operatorLine}\nМы уведомим вас при смене статуса.`, true);
+        showToast(`Заявка #${data.id} принята`);
         loadMyRequests(true).catch(() => {
           // optional background refresh
         });
@@ -2715,8 +2715,8 @@
         btn.addEventListener("click", () => {
           openView(btn.dataset.open);
           if (btn.dataset.open === "rate") {
-            refreshRate().catch((e) => showToast(`РћС€РёР±РєР° РєСѓСЂСЃР°: ${e.message}`));
-            calculateRateCalc().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+            refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
+            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
           }
         });
       });
@@ -2725,21 +2725,21 @@
         btn.addEventListener("click", () => {
           openView(btn.dataset.view);
           if (btn.dataset.view === "rate") {
-            refreshRate().catch((e) => showToast(`РћС€РёР±РєР° РєСѓСЂСЃР°: ${e.message}`));
-            calculateRateCalc().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+            refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
+            calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
           }
         });
       });
 
       document.getElementById("createBtn").addEventListener("click", () => {
-        createRequest().catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°СЏРІРєРё: ${e.message}`, false));
+        createRequest().catch((e) => setStatus(`Ошибка заявки: ${e.message}`, false));
       });
 
       document.getElementById("refreshRateBtn").addEventListener("click", () => {
-        refreshRate().catch((e) => showToast(`РћС€РёР±РєР° РєСѓСЂСЃР°: ${e.message}`));
+        refreshRate().catch((e) => showToast(`Ошибка курса: ${e.message}`));
       });
       document.getElementById("rateCalcRecalcBtn").addEventListener("click", () => {
-        calculateRateCalc().catch((e) => showToast(`РћС€РёР±РєР° РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°: ${e.message}`));
+        calculateRateCalc().catch((e) => showToast(`Ошибка калькулятора: ${e.message}`));
       });
       els.fabCalcBtn.addEventListener("click", () => {
         toggleFloatingCalc();
@@ -2756,14 +2756,14 @@
       els.floatingCalcReceiveAmount.addEventListener("input", scheduleFloatingCalcFromReceive);
       els.requisites.addEventListener("input", clearStatus);
       els.userChatSendBtn.addEventListener("click", () => {
-        sendUserChatMessage().catch((e) => showToast(`РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё: ${e.message}`));
+        sendUserChatMessage().catch((e) => showToast(`Ошибка отправки: ${e.message}`));
       });
       els.userChatInput.addEventListener("keydown", (event) => {
         if (event.key !== "Enter") {
           return;
         }
         event.preventDefault();
-        sendUserChatMessage().catch((e) => showToast(`РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё: ${e.message}`));
+        sendUserChatMessage().catch((e) => showToast(`Ошибка отправки: ${e.message}`));
       });
 
       localizeStaticTexts();
@@ -2787,8 +2787,7 @@
             });
           }, 120);
         })
-        .catch((e) => setStatus(`РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё: ${e.message}`, false));
+        .catch((e) => setStatus(`Ошибка загрузки: ${e.message}`, false));
     </script>
   </body>
 </html>
-

@@ -233,15 +233,15 @@ async def _notify_operator_new_request(
 ) -> None:
     recipient_ids = {settings.bot_operator_chat_id, *settings.operator_ids}
     message_text = (
-        f"РќРѕРІР°СЏ Р·Р°СЏРІРєР° #{request.id} (miniapp)\n"
-        f"РЎС‚Р°С‚СѓСЃ: РќРѕРІР°СЏ\n"
+        f"Новая заявка #{request.id} (miniapp)\n"
+        f"Статус: Новая\n"
         f"user_id={payload.telegram_id}\n"
         f"username={_normalize_username(payload.username)}\n"
-        f"РќР°РїСЂР°РІР»РµРЅРёРµ: {request.direction}\n"
-        f"РћС‚РїСЂР°РІРєР°: {_round2(float(request.amount_send))}\n"
-        f"РџРѕР»СѓС‡РµРЅРёРµ: {_round2(float(request.amount_receive))}\n"
-        f"РљСѓСЂСЃ: {_round2(float(request.final_rate))}\n"
-        f"Р РµРєРІРёР·РёС‚С‹:\n{request.user_requisites}"
+        f"Направление: {request.direction}\n"
+        f"Отправка: {_round2(float(request.amount_send))}\n"
+        f"Получение: {_round2(float(request.amount_receive))}\n"
+        f"Курс: {_round2(float(request.final_rate))}\n"
+        f"Реквизиты:\n{request.user_requisites}"
     )
     for recipient_id in recipient_ids:
         try:
@@ -836,4 +836,3 @@ async def admin_request_history(
 
 if __name__ == "__main__":
     uvicorn.run("src.miniapp.app:app", host="0.0.0.0", port=8080, reload=True)
-
