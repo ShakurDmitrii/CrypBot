@@ -115,12 +115,27 @@
 
       .input,
       .select {
+        width: 100%;
         border: 1px solid var(--line);
         border-radius: 10px;
         background: #0b2b38;
         color: var(--text);
         padding: 9px 10px;
         font: inherit;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .label {
+        display: block;
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.25;
       }
 
       .chips {
@@ -849,11 +864,15 @@
           <div class="panel" style="margin-top:0">
             <div class="editor-head">Настройки оператора</div>
 
-            <label class="label" for="settingsMinDealRub">Минимальная сделка (RUB)</label>
-            <input class="input" id="settingsMinDealRub" type="number" min="1" step="1" value="${escapeHtml(minDealRub)}" />
+            <div class="field">
+              <label class="label" for="settingsMinDealRub">Минимальная сделка (RUB)</label>
+              <input class="input" id="settingsMinDealRub" type="number" min="1" step="1" value="${escapeHtml(minDealRub)}" />
+            </div>
 
-            <label class="label" for="settingsRoundStepRub">Шаг автоокругления RUB</label>
-            <input class="input" id="settingsRoundStepRub" type="number" min="1" step="1" value="${escapeHtml(roundStepRub)}" />
+            <div class="field">
+              <label class="label" for="settingsRoundStepRub">Шаг автоокругления RUB</label>
+              <input class="input" id="settingsRoundStepRub" type="number" min="1" step="1" value="${escapeHtml(roundStepRub)}" />
+            </div>
 
             <div class="buttons">
               <button class="btn primary" id="saveSettingsBtn" type="button">Сохранить</button>
