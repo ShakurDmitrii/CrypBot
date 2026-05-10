@@ -8,7 +8,16 @@ def _is_valid_telegram_webapp_url(raw_url: str) -> bool:
     if not value:
         return False
     parsed = urlparse(value)
-    return parsed.scheme == "https" and bool(parsed.netloc)
+    if not parsed.netloc:
+        return False
+    if parsed.scheme == "https":
+        return True
+    # Telegram clients typically require HTTPS; http://localhost is allowed here only for local dev
+    # (Desktop often works; mobile may still refuse — use ngrok HTTPS for real tests).
+    if parsed.scheme == "http":
+        host = (parsed.hostname or "").lower()
+        return host in {"localhost", "127.0.0.1"}
+    return False
 
 
 def main_menu_keyboard(mini_app_url: str = "", is_operator: bool = False) -> ReplyKeyboardMarkup:

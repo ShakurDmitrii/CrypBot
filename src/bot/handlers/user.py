@@ -21,7 +21,7 @@ from src.db.session import SessionLocal
 from src.services.app_settings import (
     MIN_DEAL_RUB_DEFAULT,
     ROUND_STEP_RUB_DEFAULT,
-    get_margin_percent,
+    get_margin_percent_for_direction,
     get_min_deal_rub,
     get_round_step_rub,
 )
@@ -166,7 +166,9 @@ def _format_money(value: float) -> str:
 
 async def _calculate_request_amounts(direction: str, amount_send: float) -> tuple[float, float, float, float, float]:
     async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        margin_percent = await get_margin_percent_for_direction(
+            session, direction, settings.bot_margin_percent
+        )
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     quote = await get_quote(direction, margin_percent, settings)
@@ -380,30 +382,31 @@ async def cmd_chatid(message: Message) -> None:
 
 @router.message(F.text == "Курс")
 async def show_rate(message: Message) -> None:
-    async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-
     show_margin = _is_operator_user(message)
     blocks: list[str] = []
-    for direction in available_directions():
-        try:
-            quote = await get_quote(direction, margin_percent, settings)
-        except RateServiceError:
-            await message.answer(
-                "Сервис курсов временно недоступен. Попробуйте еще раз через пару секунд.",
-                reply_markup=_menu(message),
+    async with SessionLocal() as session:
+        for direction in available_directions():
+            margin_percent = await get_margin_percent_for_direction(
+                session, direction, settings.bot_margin_percent
             )
-            return
-        base_line = f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n" if show_margin else ""
-        margin_line = f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n" if show_margin else ""
-        blocks.append(
-            (
-                f"<b>{_format_direction(direction)}</b>\n"
-                f"{base_line}"
-                f"{margin_line}"
-                f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
+            try:
+                quote = await get_quote(direction, margin_percent, settings)
+            except RateServiceError:
+                await message.answer(
+                    "Сервис курсов временно недоступен. Попробуйте еще раз через пару секунд.",
+                    reply_markup=_menu(message),
+                )
+                return
+            base_line = f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n" if show_margin else ""
+            margin_line = f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n" if show_margin else ""
+            blocks.append(
+                (
+                    f"<b>{_format_direction(direction)}</b>\n"
+                    f"{base_line}"
+                    f"{margin_line}"
+                    f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
+                )
             )
-        )
 
     text = "<b>Актуальные курсы</b>\n\n" + "\n\n".join(blocks)
     await message.answer(text, reply_markup=_menu(message))
@@ -443,7 +446,9 @@ async def calc_set_amount(message: Message, state: FSMContext) -> None:
     direction = data["direction"]
     try:
         async with SessionLocal() as session:
-            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+            margin_percent = await get_margin_percent_for_direction(
+                session, direction, settings.bot_margin_percent
+            )
         quote = await get_quote(direction, margin_percent, settings)
     except RateServiceError:
         await message.answer("Сервис курсов временно недоступен. Попробуйте позже.", reply_markup=_menu(message))

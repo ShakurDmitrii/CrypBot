@@ -17,7 +17,7 @@ from src.bot.states.request_flow import OperatorFlow
 from src.config import get_settings
 from src.db.models import AmlCheck, AmlStatus, ExchangeRequest, RequestStatus, User
 from src.db.session import SessionLocal
-from src.services.app_settings import get_margin_percent, set_margin_percent
+from src.services.app_settings import get_margin_percent_for_direction, set_margin_percent
 from src.services.exchange_requests import get_request_by_id, update_request_status
 from src.services.rates import RateServiceError, available_directions, get_quote
 
@@ -272,11 +272,17 @@ async def set_bot_margin(message: Message, command: CommandObject) -> None:
 
     if not command.args:
         async with SessionLocal() as session:
-            margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+            margin_usdt_rub = await get_margin_percent_for_direction(
+                session, "USDT->RUB", settings.bot_margin_percent
+            )
+            margin_rub_usdt = await get_margin_percent_for_direction(
+                session, "RUB->USDT", settings.bot_margin_percent
+            )
         await message.answer(
-            f"Текущая маржа: {margin_percent:.2f}%\n"
-            f"Изменить: /margin &lt;percent&gt;\n"
-            f"Пример: /margin 2.5"
+            f"Маржа USDT→RUB: {margin_usdt_rub:.2f}%\n"
+            f"Маржа RUB→USDT: {margin_rub_usdt:.2f}%\n\n"
+            f"Одинаковую для обоих: /margin &lt;percent&gt; (пример: /margin 2.5).\n"
+            f"Разные проценты по направлениям — в мини-приложении, раздел настроек оператора."
         )
         return
 
@@ -304,24 +310,25 @@ async def operator_show_rates(message: Message) -> None:
         await message.answer("Действие доступно только оператору.")
         return
 
-    async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
-
     blocks: list[str] = []
-    for direction in available_directions():
-        try:
-            quote = await get_quote(direction, margin_percent, settings)
-        except RateServiceError:
-            await message.answer("Сервис курсов временно недоступен.", reply_markup=_operator_commands_menu())
-            return
-        blocks.append(
-            (
-                f"<b>{_format_direction(direction)}</b>\n"
-                f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n"
-                f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n"
-                f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
+    async with SessionLocal() as session:
+        for direction in available_directions():
+            margin_percent = await get_margin_percent_for_direction(
+                session, direction, settings.bot_margin_percent
             )
-        )
+            try:
+                quote = await get_quote(direction, margin_percent, settings)
+            except RateServiceError:
+                await message.answer("Сервис курсов временно недоступен.", reply_markup=_operator_commands_menu())
+                return
+            blocks.append(
+                (
+                    f"<b>{_format_direction(direction)}</b>\n"
+                    f"Базовый курс: <code>{quote.base_rate:.6f}</code>\n"
+                    f"Маржа: <code>+{quote.margin_percent:.2f}%</code>\n"
+                    f"Итоговый курс: <code>{quote.final_rate:.6f}</code>"
+                )
+            )
 
     await message.answer(
         "<b>Курсы для оператора</b>\n\n" + "\n\n".join(blocks),
@@ -336,10 +343,19 @@ async def operator_margin_start(message: Message, state: FSMContext) -> None:
         return
 
     async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        margin_usdt_rub = await get_margin_percent_for_direction(
+            session, "USDT->RUB", settings.bot_margin_percent
+        )
+        margin_rub_usdt = await get_margin_percent_for_direction(
+            session, "RUB->USDT", settings.bot_margin_percent
+        )
     await state.set_state(OperatorFlow.waiting_margin_value)
     await message.answer(
-        f"Текущая маржа: {margin_percent:.2f}%\nВведите новое значение (например, 2.5).",
+        "Текущие маржи:\n"
+        f"USDT→RUB: {margin_usdt_rub:.2f}%\n"
+        f"RUB→USDT: {margin_rub_usdt:.2f}%\n\n"
+        "Введите одно число, чтобы выставить одинаковую маржу для обоих направлений "
+        "(например, 2.5). Раздельно — в мини-приложении, настройки оператора.",
         reply_markup=_cancel_menu(),
     )
 

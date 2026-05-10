@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
@@ -859,10 +859,22 @@
         setView("settings");
         const minDealRub = Number(settingsData.min_deal_rub || 0);
         const roundStepRub = Number(settingsData.round_step_rub || 0);
+        const marginUsdtRub = Number(settingsData.margin_percent_usdt_rub ?? 0);
+        const marginRubUsdt = Number(settingsData.margin_percent_rub_usdt ?? 0);
 
         contextToolsEl.innerHTML = `
           <div class="panel" style="margin-top:0">
             <div class="editor-head">Настройки оператора</div>
+
+            <div class="field">
+              <label class="label" for="settingsMarginUsdtRub">Маржа USDT → RUB (%)</label>
+              <input class="input" id="settingsMarginUsdtRub" type="number" min="0" step="0.01" value="${escapeHtml(marginUsdtRub)}" />
+            </div>
+
+            <div class="field">
+              <label class="label" for="settingsMarginRubUsdt">Маржа RUB → USDT (%)</label>
+              <input class="input" id="settingsMarginRubUsdt" type="number" min="0" step="0.01" value="${escapeHtml(marginRubUsdt)}" />
+            </div>
 
             <div class="field">
               <label class="label" for="settingsMinDealRub">Минимальная сделка (RUB)</label>
@@ -877,7 +889,7 @@
             <div class="buttons">
               <button class="btn primary" id="saveSettingsBtn" type="button">Сохранить</button>
             </div>
-            <p class="hint">Введите минимальную сделку и шаг округления для рублевой стороны.</p>
+            <p class="hint">Маржи по направлениям можно задать раздельно. Одинаковую маржу для обоих направлений по-прежнему можно выставить командой бота /margin. Минимальная сделка и шаг округления — для рублевой стороны.</p>
           </div>
         `;
 
@@ -885,7 +897,9 @@
           saveSettings().catch((e) => setStatus(`Ошибка сохранения настроек: ${e.message}`, true));
         });
 
-        setStatus(`Текущие настройки: минимум ${minDealRub} RUB, округление ${roundStepRub} RUB.`);
+        setStatus(
+          `Текущие настройки: USDT→RUB +${marginUsdtRub}%, RUB→USDT +${marginRubUsdt}%; минимум ${minDealRub} RUB, округление ${roundStepRub} RUB.`
+        );
       }
 
       function renderAdminChatUsers() {
@@ -1084,12 +1098,16 @@
 
         const minDealInput = document.getElementById("settingsMinDealRub");
         const roundStepInput = document.getElementById("settingsRoundStepRub");
-        if (!minDealInput || !roundStepInput) {
+        const marginUsdtRubInput = document.getElementById("settingsMarginUsdtRub");
+        const marginRubUsdtInput = document.getElementById("settingsMarginRubUsdt");
+        if (!minDealInput || !roundStepInput || !marginUsdtRubInput || !marginRubUsdtInput) {
           return;
         }
 
         const minDealRub = Number(String(minDealInput.value || "").trim());
         const roundStepRub = Number(String(roundStepInput.value || "").trim());
+        const marginUsdtRub = Number(String(marginUsdtRubInput.value || "").trim().replace(",", "."));
+        const marginRubUsdt = Number(String(marginRubUsdtInput.value || "").trim().replace(",", "."));
 
         if (!Number.isInteger(minDealRub) || minDealRub <= 0) {
           setStatus("Некорректное значение минимальной сделки.", true);
@@ -1099,6 +1117,14 @@
           setStatus("Некорректное значение шага округления.", true);
           return;
         }
+        if (!Number.isFinite(marginUsdtRub) || marginUsdtRub < 0) {
+          setStatus("Некорректная маржа USDT → RUB.", true);
+          return;
+        }
+        if (!Number.isFinite(marginRubUsdt) || marginRubUsdt < 0) {
+          setStatus("Некорректная маржа RUB → USDT.", true);
+          return;
+        }
 
         setStatus("Сохраняю настройки...");
         const data = await api(`/api/admin/settings/${state.telegramId}`, {
@@ -1106,6 +1132,8 @@
           body: JSON.stringify({
             min_deal_rub: minDealRub,
             round_step_rub: roundStepRub,
+            margin_percent_usdt_rub: marginUsdtRub,
+            margin_percent_rub_usdt: marginRubUsdt,
           }),
         });
 

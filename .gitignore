@@ -16,7 +16,6 @@ settings.local.py
 *.code-workspace
 
 # Runtime artifacts
-docker-compose.yml
 bot.db
 bot.log
 *.log

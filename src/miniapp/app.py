@@ -17,9 +17,11 @@ from src.db.session import SessionLocal
 from src.services.app_settings import (
     MIN_DEAL_RUB_DEFAULT,
     ROUND_STEP_RUB_DEFAULT,
-    get_margin_percent,
+    get_margin_percent_for_direction,
     get_min_deal_rub,
     get_round_step_rub,
+    set_margin_percent_rub_usdt,
+    set_margin_percent_usdt_rub,
     set_min_deal_rub,
     set_round_step_rub,
 )
@@ -80,6 +82,8 @@ class AdminSupportMessagePayload(BaseModel):
 class AdminUpdateSettingsPayload(BaseModel):
     min_deal_rub: int | None = None
     round_step_rub: int | None = None
+    margin_percent_usdt_rub: float | None = Field(default=None, ge=0)
+    margin_percent_rub_usdt: float | None = Field(default=None, ge=0)
 
 
 CHAT_ROLE_USER = "user"
@@ -345,14 +349,22 @@ async def offer() -> dict[str, str]:
 
 
 @app.get("/api/admin/settings/{telegram_id}")
-async def admin_settings(telegram_id: int) -> dict[str, int]:
+async def admin_settings(telegram_id: int) -> dict[str, int | float]:
     _require_operator(telegram_id)
     async with SessionLocal() as session:
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
+        margin_usdt_rub = await get_margin_percent_for_direction(
+            session, "USDT->RUB", settings.bot_margin_percent
+        )
+        margin_rub_usdt = await get_margin_percent_for_direction(
+            session, "RUB->USDT", settings.bot_margin_percent
+        )
     return {
         "min_deal_rub": int(min_deal_rub),
         "round_step_rub": int(round_step_rub),
+        "margin_percent_usdt_rub": float(margin_usdt_rub),
+        "margin_percent_rub_usdt": float(margin_rub_usdt),
     }
 
 
@@ -360,9 +372,14 @@ async def admin_settings(telegram_id: int) -> dict[str, int]:
 async def admin_update_settings(
     telegram_id: int,
     payload: AdminUpdateSettingsPayload,
-) -> dict[str, int]:
+) -> dict[str, int | float]:
     _require_operator(telegram_id)
-    if payload.min_deal_rub is None and payload.round_step_rub is None:
+    if (
+        payload.min_deal_rub is None
+        and payload.round_step_rub is None
+        and payload.margin_percent_usdt_rub is None
+        and payload.margin_percent_rub_usdt is None
+    ):
         raise HTTPException(status_code=400, detail="Nothing to update")
     if payload.min_deal_rub is not None and payload.min_deal_rub <= 0:
         raise HTTPException(status_code=400, detail="min_deal_rub must be > 0")
@@ -375,16 +392,28 @@ async def admin_update_settings(
                 await set_min_deal_rub(session, payload.min_deal_rub)
             if payload.round_step_rub is not None:
                 await set_round_step_rub(session, payload.round_step_rub)
+            if payload.margin_percent_usdt_rub is not None:
+                await set_margin_percent_usdt_rub(session, payload.margin_percent_usdt_rub)
+            if payload.margin_percent_rub_usdt is not None:
+                await set_margin_percent_rub_usdt(session, payload.margin_percent_rub_usdt)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         await session.commit()
 
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
+        margin_usdt_rub = await get_margin_percent_for_direction(
+            session, "USDT->RUB", settings.bot_margin_percent
+        )
+        margin_rub_usdt = await get_margin_percent_for_direction(
+            session, "RUB->USDT", settings.bot_margin_percent
+        )
 
     return {
         "min_deal_rub": int(min_deal_rub),
         "round_step_rub": int(round_step_rub),
+        "margin_percent_usdt_rub": float(margin_usdt_rub),
+        "margin_percent_rub_usdt": float(margin_rub_usdt),
     }
 
 
@@ -402,7 +431,9 @@ async def directions() -> dict[str, list[dict[str, str]]]:
 async def calc(payload: CalcRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        margin_percent = await get_margin_percent_for_direction(
+            session, payload.direction, settings.bot_margin_percent
+        )
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
@@ -436,7 +467,9 @@ async def calc(payload: CalcRequest) -> dict[str, float | str]:
 async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        margin_percent = await get_margin_percent_for_direction(
+            session, payload.direction, settings.bot_margin_percent
+        )
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
@@ -470,7 +503,9 @@ async def calc_reverse(payload: CalcReverseRequest) -> dict[str, float | str]:
 async def create_request(payload: CreateRequestPayload) -> dict[str, int | str | float]:
     _validate_direction(payload.direction)
     async with SessionLocal() as session:
-        margin_percent = await get_margin_percent(session, settings.bot_margin_percent)
+        margin_percent = await get_margin_percent_for_direction(
+            session, payload.direction, settings.bot_margin_percent
+        )
         min_deal_rub = await get_min_deal_rub(session, MIN_DEAL_RUB_DEFAULT)
         round_step_rub = await get_round_step_rub(session, ROUND_STEP_RUB_DEFAULT)
     try:
